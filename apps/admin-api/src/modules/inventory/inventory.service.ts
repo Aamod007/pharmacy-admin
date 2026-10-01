@@ -1,5 +1,6 @@
 import prisma from "@pharmacy-admin/db";
 import { StockAdjustmentInput, BatchCreateInput } from "@pharmacy-admin/shared";
+import { syncMutationToMainSite } from "../../lib/revalidate";
 
 export class InventoryService {
   async getBatches(query: {
@@ -107,10 +108,17 @@ export class InventoryService {
     };
   }
 
-  async adjustStock(input: StockAdjustmentInput, adminUserId: string) {
-    return prisma.$transaction(async (tx) => {
+  async adjustStock(input: StockAdjustmentInput, actor: { adminId: string; email: string }) {
+    const result = await prisma.$transaction(async (tx) => {
       const batch = await tx.inventoryBatch.findUnique({
         where: { id: input.batchId },
+        include: {
+          variant: {
+            include: {
+              product: true,
+            },
+          },
+        },
       });
       if (!batch) throw new Error("Batch not found");
 
@@ -136,16 +144,50 @@ export class InventoryService {
           newStock,
           referenceType: "MANUAL_ADJUSTMENT",
           reason: input.reason,
-          createdByAdminId: adminUserId,
+          createdByAdminId: actor.adminId,
         },
       });
 
-      return { batchId: batch.id, previousStock, newStock, movementId: movement.id };
+      return {
+        batchId: batch.id,
+        previousStock,
+        newStock,
+        movementId: movement.id,
+        product: batch.variant?.product,
+        batchNumber: batch.batchNumber,
+      };
     });
+
+    if (result.product) {
+      syncMutationToMainSite({
+        type: "inventory.updated",
+        entityId: result.product.id,
+        entityName: `${result.product.name} (Batch ${result.batchNumber}: ${result.newStock} units)`,
+        tags: ["products", "inventory", `product:${result.product.slug}`],
+        paths: ["/", "/products", `/products/${result.product.slug}`],
+        actor,
+      });
+    }
+
+    return {
+      batchId: result.batchId,
+      previousStock: result.previousStock,
+      newStock: result.newStock,
+      movementId: result.movementId,
+    };
   }
 
-  async toggleBlockBatch(batchId: string, isBlocked: boolean, adminUserId: string) {
-    const batch = await prisma.inventoryBatch.findUnique({ where: { id: batchId } });
+  async toggleBlockBatch(batchId: string, isBlocked: boolean, actor: { adminId: string; email: string }) {
+    const batch = await prisma.inventoryBatch.findUnique({
+      where: { id: batchId },
+      include: {
+        variant: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
     if (!batch) throw new Error("Batch not found");
 
     const updated = await prisma.inventoryBatch.update({
@@ -163,9 +205,20 @@ export class InventoryService {
         newStock: batch.quantity,
         referenceType: "QUARANTINE_TOGGLE",
         reason: isBlocked ? "Batch Quarantined / Blocked from Sale" : "Batch Unblocked for Sale",
-        createdByAdminId: adminUserId,
+        createdByAdminId: actor.adminId,
       },
     });
+
+    if (batch.variant?.product) {
+      syncMutationToMainSite({
+        type: "inventory.updated",
+        entityId: batch.variant.product.id,
+        entityName: `${batch.variant.product.name} (Batch ${batch.batchNumber} ${isBlocked ? "Quarantined" : "Unblocked"})`,
+        tags: ["products", "inventory", `product:${batch.variant.product.slug}`],
+        paths: ["/", "/products", `/products/${batch.variant.product.slug}`],
+        actor,
+      });
+    }
 
     return updated;
   }

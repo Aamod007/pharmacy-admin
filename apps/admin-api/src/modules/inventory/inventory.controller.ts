@@ -18,14 +18,16 @@ export class InventoryController {
 
   async adjustStock(req: Request, res: Response) {
     const validated = stockAdjustmentSchema.parse(req.body);
-    const result = await inventoryService.adjustStock(validated, req.admin!.adminUserId);
+    const actor = { adminId: req.admin!.adminUserId, email: req.admin!.email };
+    const result = await inventoryService.adjustStock(validated, actor);
     return res.json({ success: true, data: result, message: "Stock adjustment recorded" });
   }
 
   async toggleBlock(req: Request, res: Response) {
     const batchId = req.params.id;
     const { isBlocked } = req.body;
-    const result = await inventoryService.toggleBlockBatch(batchId, Boolean(isBlocked), req.admin!.adminUserId);
+    const actor = { adminId: req.admin!.adminUserId, email: req.admin!.email };
+    const result = await inventoryService.toggleBlockBatch(batchId, Boolean(isBlocked), actor);
     return res.json({
       success: true,
       data: result,

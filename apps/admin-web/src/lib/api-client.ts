@@ -1,6 +1,6 @@
 import { useAuthStore } from "../store/authStore";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 export async function apiRequest<T = any>(
   endpoint: string,

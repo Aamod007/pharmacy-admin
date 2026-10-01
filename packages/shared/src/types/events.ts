@@ -17,7 +17,8 @@ export type StoreEventType =
   | "coupon.updated"
   | "lab_test.updated"
   | "doctor.updated"
-  | "review.updated";
+  | "review.updated"
+  | "inventory.updated";
 
 export interface StoreEventPayload {
   type: StoreEventType;

@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@pharmacy-admin/shared": "*",
+    "@pharmacy-admin/db": "*",
+    "@pharmacy-admin/admin-api": "*",
     "@radix-ui/react-alert-dialog": "^1.1.2",
     "@radix-ui/react-avatar": "^1.1.1",
     "@radix-ui/react-checkbox": "^1.1.2",
@@ -35,7 +37,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "lucide-react": "^0.453.0",
-    "next": "15.0.0",
+    "next": "^15.2.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-dropzone": "^14.2.9",
