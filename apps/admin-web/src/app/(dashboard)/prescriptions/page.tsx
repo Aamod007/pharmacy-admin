@@ -705,7 +705,9 @@ export default function PrescriptionsPage() {
                         >
                           <div>
                             <p className="font-bold text-[#0F2A22]">{prod.name}</p>
-                            <p className="text-[10px] text-[#5B6B65]">{prod.brand} &bull; Stock: {prod.totalStock} units</p>
+                            <p className="text-[10px] text-[#5B6B65]">
+                              {typeof prod.brand === "object" ? prod.brand?.name : prod.brand} &bull; Stock: {prod.totalStock} units
+                            </p>
                           </div>
                           <span className="font-bold text-[#16A34A]">{formatCurrency(prod.price)}</span>
                         </div>

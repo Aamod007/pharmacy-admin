@@ -7,11 +7,10 @@ const options = {
   maxRetriesPerRequest: 1,
   enableReadyCheck: false,
   lazyConnect: true,
+  enableOfflineQueue: false,
+  commandTimeout: 500,
   retryStrategy(times: number) {
-    if (times > 2) {
-      return null; // Stop retrying if unavailable
-    }
-    return Math.min(times * 150, 1000);
+    return null; // Stop retrying if unavailable in standalone mode
   },
 };
 

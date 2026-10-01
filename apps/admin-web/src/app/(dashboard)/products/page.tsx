@@ -134,11 +134,15 @@ export default function ProductsListPage() {
                     )}
                     <div>
                       <p className="font-bold text-[#0F2A22] text-sm">{p.name}</p>
-                      <p className="text-xs text-[#5B6B65]">{p.brand}</p>
+                      <p className="text-xs text-[#5B6B65]">
+                        {typeof p.brand === "object" ? p.brand?.name : p.brand}
+                      </p>
                     </div>
                   </td>
                   <td className="py-3.5 px-4 font-mono text-xs text-[#5B6B65] font-semibold">{p.sku}</td>
-                  <td className="py-3.5 px-4 text-xs font-bold text-[#0B4A3A]">{p.category}</td>
+                  <td className="py-3.5 px-4 text-xs font-bold text-[#0B4A3A]">
+                    {typeof p.category === "object" ? p.category?.name : p.category}
+                  </td>
                   <td className="py-3.5 px-4 font-bold text-[#0F2A22]">{formatCurrency(p.price)}</td>
                   <td className="py-3.5 px-4">
                     {p.totalStock === 0 ? (

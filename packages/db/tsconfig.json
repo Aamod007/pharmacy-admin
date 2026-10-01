@@ -5,7 +5,9 @@
     "rootDir": "./src"
   },
   "include": [
-    "src/**/*",
-    "prisma/**/*"
+    "src/**/*"
+  ],
+  "exclude": [
+    "prisma/seed.ts"
   ]
 }

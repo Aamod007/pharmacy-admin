@@ -530,7 +530,9 @@ export default function InventoryPage() {
                               <div className="flex items-center gap-2 mt-0.5 text-xs text-[#5B6B65]">
                                 {b.variant?.product?.brand && (
                                   <span className="font-semibold text-[#0B4A3A]">
-                                    {b.variant.product.brand}
+                                    {typeof b.variant.product.brand === "object"
+                                      ? b.variant.product.brand.name
+                                      : b.variant.product.brand}
                                   </span>
                                 )}
                                 <span>&bull;</span>
@@ -674,7 +676,7 @@ export default function InventoryPage() {
                 </p>
               </div>
               <button
-                onClick={loadLedger}
+                onClick={() => loadLedger()}
                 className="px-3 py-1.5 bg-[#F1F3F4] rounded-xl text-xs font-bold text-[#0F2A22] hover:bg-[#E4E7E9] flex items-center gap-1"
               >
                 <RotateCcw className="w-3.5 h-3.5" /> Refresh Ledger
@@ -789,7 +791,6 @@ export default function InventoryPage() {
               </div>
             )}
           </div>
-        </div>
 
         {/* ADJUST STOCK MODAL */}
         {adjustBatch && (

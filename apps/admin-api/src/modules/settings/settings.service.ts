@@ -1,5 +1,5 @@
 import prisma from "@pharmacy-admin/db";
-import { redis } from "../../lib/redis";
+import { redis, isRedisConnected } from "../../lib/redis";
 import { env } from "../../config/env";
 import { syncMutationToMainSite } from "../../lib/revalidate";
 
@@ -46,14 +46,18 @@ export class SettingsService {
       dbStatus = "DOWN";
     }
 
-    try {
-      await redis.ping();
-    } catch {
+    if (isRedisConnected) {
+      try {
+        await redis.ping();
+      } catch {
+        redisStatus = "DOWN";
+      }
+    } else {
       redisStatus = "DOWN";
     }
 
     try {
-      const res = await fetch(`${env.MAIN_SITE_URL}/api/health`, { signal: AbortSignal.timeout(3000) });
+      const res = await fetch(`${env.MAIN_SITE_URL}/api/health`, { signal: AbortSignal.timeout(500) });
       if (!res.ok) mainSiteStatus = "DEGRADED";
     } catch {
       mainSiteStatus = "DOWN";

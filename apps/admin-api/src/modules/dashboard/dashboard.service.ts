@@ -1,16 +1,18 @@
 import prisma from "@pharmacy-admin/db";
-import { redis } from "../../lib/redis";
+import { redis, isRedisConnected } from "../../lib/redis";
 
 const CACHE_KEY = "admin:dashboard:stats";
 
 export class DashboardService {
   async getDashboardKpis() {
-    // Check Redis cache first
-    try {
-      const cached = await redis.get(CACHE_KEY);
-      if (cached) return JSON.parse(cached);
-    } catch (e) {
-      console.warn("Redis get error:", e);
+    // Check Redis cache first if connected
+    if (isRedisConnected) {
+      try {
+        const cached = await redis.get(CACHE_KEY);
+        if (cached) return JSON.parse(cached);
+      } catch (e) {
+        console.warn("Redis get error:", e);
+      }
     }
 
     const now = new Date();
@@ -82,11 +84,13 @@ export class DashboardService {
       cachedAt: new Date().toISOString(),
     };
 
-    // Cache in Redis for 5 minutes (300 seconds)
-    try {
-      await redis.set(CACHE_KEY, JSON.stringify(data), "EX", 300);
-    } catch (e) {
-      console.warn("Redis set error:", e);
+    // Cache in Redis for 5 minutes if connected
+    if (isRedisConnected) {
+      try {
+        await redis.set(CACHE_KEY, JSON.stringify(data), "EX", 300);
+      } catch (e) {
+        console.warn("Redis set error:", e);
+      }
     }
 
     return data;
