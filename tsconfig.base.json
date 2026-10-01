@@ -25,7 +25,8 @@
       "@pharmacy-admin/shared/*": [
         "./packages/shared/src/*"
       ]
-    }
+    },
+    "noImplicitAny": false
   },
   "exclude": [
     "node_modules",
