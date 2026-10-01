@@ -42,15 +42,9 @@ app.use(requestIdMiddleware);
 
 // Security & Parsing
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-const allowedOrigins = env.CORS_ORIGIN.split(",").map((s) => s.trim());
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin) || (env.NODE_ENV === "development" && origin.includes("localhost"))) {
-        return callback(null, true);
-      }
-      return callback(new Error("Not allowed by CORS"));
-    },
+    origin: true,
     credentials: true,
   })
 );

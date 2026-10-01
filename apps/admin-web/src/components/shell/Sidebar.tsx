@@ -209,14 +209,6 @@ export function Sidebar() {
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={logout}
-            title="Log Out"
-            className="p-1.5 rounded-lg text-[#DC2626] hover:bg-[#FEF2F2] transition cursor-pointer flex-shrink-0"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
         </div>
       </div>
     </aside>

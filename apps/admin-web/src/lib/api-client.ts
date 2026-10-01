@@ -45,11 +45,9 @@ export async function apiRequest<T = any>(
         }
       } else {
         useAuthStore.getState().logout();
-        if (typeof window !== "undefined") window.location.href = "/login";
       }
     } catch {
       useAuthStore.getState().logout();
-      if (typeof window !== "undefined") window.location.href = "/login";
     }
   }
 
