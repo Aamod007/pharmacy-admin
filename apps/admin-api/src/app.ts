@@ -7,9 +7,12 @@ import { env } from "./config/env";
 import { ipFilterMiddleware } from "./middlewares/ipFilter";
 import { apiRateLimiter } from "./middlewares/rateLimiter";
 import { errorHandler } from "./middlewares/errorHandler";
+import { requestIdMiddleware } from "./middlewares/requestId";
 import { sseManager } from "./lib/sse";
 import { authenticateAdmin } from "./middlewares/auth";
 import { swaggerDocument } from "./modules/docs/swagger";
+import prisma from "@pharmacy-admin/db";
+import { isRedisConnected, redis } from "./lib/redis";
 
 // Module routes
 import authRoutes from "./modules/auth/auth.routes";
@@ -33,6 +36,9 @@ import consultationsRoutes from "./modules/consultations/consultations.routes";
 import reviewsRoutes from "./modules/reviews/reviews.routes";
 
 const app = express();
+
+// Request ID for distributed tracing (Playbook Layer 13)
+app.use(requestIdMiddleware);
 
 // Security & Parsing
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
@@ -58,6 +64,48 @@ app.use("/api/v1", apiRateLimiter);
 
 // OpenAPI Swagger Docs
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+// Lightweight liveness probe for load balancers
+app.get(["/health", "/api/health/live"], (_req, res) => {
+  res.status(200).json({ status: "ok", service: "pharmacy-admin-api", time: new Date().toISOString() });
+});
+
+// Deep readiness & component health check (Playbook Layer 14)
+app.get(["/api/health", "/api/v1/health"], async (_req, res) => {
+  let dbStatus = "HEALTHY";
+  let redisStatus = "HEALTHY";
+  let dbLatencyMs = 0;
+
+  const dbStart = Date.now();
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    dbLatencyMs = Date.now() - dbStart;
+  } catch {
+    dbStatus = "DOWN";
+  }
+
+  if (isRedisConnected) {
+    try {
+      await redis.ping();
+    } catch {
+      redisStatus = "DOWN";
+    }
+  } else {
+    redisStatus = "STANDALONE_OFFLINE";
+  }
+
+  const isOperational = dbStatus === "HEALTHY";
+  res.status(isOperational ? 200 : 503).json({
+    status: isOperational ? "OPERATIONAL" : "DEGRADED",
+    service: "pharmacy-admin-api",
+    timestamp: new Date().toISOString(),
+    components: {
+      database: { status: dbStatus, latencyMs: dbLatencyMs },
+      redis: { status: redisStatus },
+      mainStorefront: { targetUrl: env.MAIN_SITE_URL },
+    },
+  });
+});
 
 // SSE Real-time Events endpoint
 app.get("/api/v1/events", authenticateAdmin, (req, res) => {
@@ -90,11 +138,6 @@ app.use("/api/v1/audit", auditRoutes);
 app.use("/api/v1/lab-tests", labTestsRoutes);
 app.use("/api/v1/consultations", consultationsRoutes);
 app.use("/api/v1/reviews", reviewsRoutes);
-
-// Health check
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok", service: "pharmacy-admin-api", time: new Date().toISOString() });
-});
 
 // Centralized error handler
 app.use(errorHandler);

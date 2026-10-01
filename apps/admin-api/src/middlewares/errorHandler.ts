@@ -1,9 +1,19 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import { Prisma } from "@prisma/client";
+import { logger } from "../lib/logger";
 
 export function errorHandler(err: any, req: Request, res: Response, next: NextFunction) {
-  console.error("🚨 Admin API Error:", err);
+  const reqId = (req as any).id || (req.headers["x-request-id"] as string) || "unknown";
+
+  logger.error("Admin API Error occurred", {
+    requestId: reqId,
+    path: req.path,
+    method: req.method,
+    errorMessage: err.message,
+    stack: err.stack,
+    name: err.name,
+  });
 
   if (err instanceof ZodError) {
     const formatted = err.issues.map((issue) => ({
@@ -14,6 +24,12 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
       success: false,
       message: "Validation failed",
       errors: formatted,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Request validation failed",
+        details: formatted,
+      },
+      requestId: reqId,
     });
   }
 
@@ -23,18 +39,37 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
       return res.status(409).json({
         success: false,
         message: `A record with this ${target} already exists.`,
+        error: {
+          code: "CONFLICT",
+          message: `A record with this ${target} already exists.`,
+          details: err.meta,
+        },
+        requestId: reqId,
       });
     }
     if (err.code === "P2025") {
       return res.status(404).json({
         success: false,
         message: "The requested record was not found.",
+        error: {
+          code: "NOT_FOUND",
+          message: "The requested record was not found.",
+          details: err.meta,
+        },
+        requestId: reqId,
       });
     }
   }
 
-  return res.status(err.status || 500).json({
+  const statusCode = err.status || err.statusCode || 500;
+  return res.status(statusCode).json({
     success: false,
     message: err.message || "An unexpected internal server error occurred",
+    error: {
+      code: err.code || (statusCode === 403 ? "FORBIDDEN" : statusCode === 401 ? "UNAUTHORIZED" : "INTERNAL_ERROR"),
+      message: err.message || "An unexpected internal server error occurred",
+      details: err.details || [],
+    },
+    requestId: reqId,
   });
 }
