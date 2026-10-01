@@ -27,6 +27,13 @@ export class PaymentsController {
     await paymentsService.replayWebhook(req.params.id);
     return res.json({ success: true, message: "Webhook replayed to main store" });
   }
+
+  async handleWebhook(req: Request, res: Response) {
+    const signature = (req.headers["x-razorpay-signature"] as string) || "";
+    const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+    const result = await paymentsService.handleWebhook(rawBody, signature, req.body);
+    return res.status(200).json(result);
+  }
 }
 
 export const paymentsController = new PaymentsController();

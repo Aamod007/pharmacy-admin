@@ -30,6 +30,8 @@ const envSchema = z.object({
   CLOUDINARY_CLOUD_NAME: z.string().optional().default(""),
   CLOUDINARY_API_KEY: z.string().optional().default(""),
   CLOUDINARY_API_SECRET: z.string().optional().default(""),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional().default("rzp_webhook_secret_placeholder"),
+  SENTRY_DSN: z.string().optional().default(""),
 });
 
 export const env = envSchema.parse(process.env);

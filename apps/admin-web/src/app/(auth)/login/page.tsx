@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuthStore } from "../../../store/authStore";
 import { apiRequest } from "../../../lib/api-client";
 import { toast } from "sonner";
@@ -200,9 +201,16 @@ export default function LoginPage() {
         )}
 
         {/* Security Footer */}
-        <div className="pt-4 border-t border-[#D7DEDB] flex items-center justify-center gap-2 text-[11px] font-semibold text-[#5B6B65]">
-          <ShieldCheck className="w-4 h-4 text-[#10B981]" />
-          <span>256-Bit SSL Encrypted • Statutory Pharmacy RBAC</span>
+        <div className="pt-4 border-t border-[#D7DEDB] flex flex-col items-center justify-center gap-1.5 text-[11px] font-semibold text-[#5B6B65]">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-[#10B981]" />
+            <span>256-Bit SSL Encrypted • Statutory Pharmacy RBAC</span>
+          </div>
+          <div className="flex items-center gap-3 text-[10px] text-slate-500 pt-1">
+            <Link href="/terms" className="hover:text-emerald-700 underline">Terms of Service</Link>
+            <span>•</span>
+            <Link href="/privacy" className="hover:text-emerald-700 underline">Privacy Policy</Link>
+          </div>
         </div>
       </div>
     </div>

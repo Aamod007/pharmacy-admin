@@ -5,6 +5,11 @@ import { requirePermission } from "../../middlewares/rbac";
 import { auditMiddleware } from "../../middlewares/audit";
 
 const router = Router();
+
+// Public verified, idempotent webhook receiver for payment gateways (Razorpay HMAC verified)
+router.post("/webhook", (req, res, next) => paymentsController.handleWebhook(req, res).catch(next));
+
+// Authenticated administrative routes
 router.use(authenticateAdmin);
 
 router.get("/", requirePermission("payments:read"), (req, res, next) => paymentsController.list(req, res).catch(next));

@@ -62,6 +62,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(ipFilterMiddleware);
 app.use("/api/v1", apiRateLimiter);
 
+// Prevent caching of administrative and tenant data at shared layers (Pre-launch Checklist Item 11)
+app.use("/api/v1", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  next();
+});
+
 // OpenAPI Swagger Docs
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 

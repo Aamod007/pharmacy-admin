@@ -61,6 +61,15 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
     }
   }
 
+  // Forward to Error Tracker if configured (Pre-launch Checklist Item 12)
+  if (process.env.SENTRY_DSN && (err.status || err.statusCode || 500) >= 500) {
+    try {
+      (globalThis as any).__errorTracker?.captureException?.(err, {
+        extra: { requestId: reqId, path: req.path, method: req.method },
+      });
+    } catch {}
+  }
+
   const statusCode = err.status || err.statusCode || 500;
   return res.status(statusCode).json({
     success: false,

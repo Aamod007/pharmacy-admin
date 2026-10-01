@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import prisma from "@pharmacy-admin/db";
 import { razorpay } from "../../lib/razorpay";
 import { RefundCreateInput } from "@pharmacy-admin/shared";
@@ -129,6 +130,119 @@ export class PaymentsService {
     });
 
     return { success: true };
+  }
+
+  verifyWebhookSignature(rawBody: string, signature: string, secretOverride?: string): boolean {
+    const secret = secretOverride || process.env.RAZORPAY_WEBHOOK_SECRET || env.RAZORPAY_WEBHOOK_SECRET;
+    if (!secret || !signature) return false;
+    try {
+      const expectedSignature = crypto
+        .createHmac("sha256", secret)
+        .update(rawBody)
+        .digest("hex");
+      return crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(signature));
+    } catch {
+      return false;
+    }
+  }
+
+  async handleWebhook(rawBody: string, signature: string, payload: any) {
+    // 1. Signature Verification
+    const isValid = this.verifyWebhookSignature(rawBody, signature);
+    if (!isValid && env.NODE_ENV === "production") {
+      throw new Error("Invalid Razorpay webhook signature");
+    }
+
+    const eventId = payload?.event_id || payload?.id || `rzp_${Date.now()}`;
+    const eventType = payload?.event || "unknown";
+
+    // 2. Idempotency Check: Don't process the same event twice
+    const existing = await prisma.adminWebhookEvent.findFirst({
+      where: { eventId, status: "PROCESSED" },
+    });
+
+    if (existing) {
+      return {
+        received: true,
+        idempotent: true,
+        message: "Event already processed successfully",
+        eventId,
+      };
+    }
+
+    // 3. Record Webhook Receipt
+    const webhookLog = await prisma.adminWebhookEvent.create({
+      data: {
+        source: "RAZORPAY",
+        eventType,
+        eventId,
+        payload: payload ?? {},
+        status: "RECEIVED",
+      },
+    });
+
+    // 4. Process event in transactional boundary
+    try {
+      await prisma.$transaction(async (tx) => {
+        if (eventType === "payment.captured" || eventType === "order.paid") {
+          const paymentEntity = payload.payload?.payment?.entity;
+          const rzpPaymentId = paymentEntity?.id;
+          const rzpOrderId = paymentEntity?.order_id;
+
+          if (rzpOrderId || rzpPaymentId) {
+            const payment = await tx.payment.findFirst({
+              where: {
+                OR: [
+                  ...(rzpPaymentId ? [{ razorpayPaymentId: rzpPaymentId }] : []),
+                  ...(rzpOrderId ? [{ razorpayOrderId: rzpOrderId }] : []),
+                ],
+              },
+            });
+
+            if (payment) {
+              await tx.payment.update({
+                where: { id: payment.id },
+                data: { status: "PAID" },
+              });
+
+              await tx.order.update({
+                where: { id: payment.orderId },
+                data: { status: "CONFIRMED" },
+              });
+            }
+          }
+        } else if (eventType === "refund.processed") {
+          const refundEntity = payload.payload?.refund?.entity;
+          const rzpPaymentId = refundEntity?.payment_id;
+
+          if (rzpPaymentId) {
+            const payment = await tx.payment.findFirst({
+              where: { razorpayPaymentId: rzpPaymentId },
+            });
+            if (payment) {
+              await tx.payment.update({
+                where: { id: payment.id },
+                data: { status: "REFUNDED" },
+              });
+            }
+          }
+        }
+
+        // Mark event as PROCESSED
+        await tx.adminWebhookEvent.update({
+          where: { id: webhookLog.id },
+          data: { status: "PROCESSED", processedAt: new Date() },
+        });
+      });
+
+      return { received: true, idempotent: false, status: "PROCESSED", eventId };
+    } catch (processErr: any) {
+      await prisma.adminWebhookEvent.update({
+        where: { id: webhookLog.id },
+        data: { status: "FAILED", processingError: processErr.message },
+      });
+      throw processErr;
+    }
   }
 }
 
