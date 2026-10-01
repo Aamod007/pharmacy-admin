@@ -66,7 +66,7 @@ export async function authenticateAdmin(req: Request, res: Response, next: NextF
       email: user.email,
       roleId: user.roleId,
       roleSlug: user.role.slug,
-      permissions: user.role.permissions.map((rp) => rp.permission.slug),
+      permissions: user.role.permissions.map((rp: any) => rp.permission.slug),
     };
 
     // Cache for 30 seconds
