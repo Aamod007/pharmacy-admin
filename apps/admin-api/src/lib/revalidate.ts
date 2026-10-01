@@ -34,16 +34,17 @@ export async function syncMutationToMainSite(options: SyncMutationOptions) {
     console.error("Failed to publish store event to Redis:", err.message);
   }
 
-  // 2. HTTP POST to Main Site ISR /api/revalidate with backoff retry
-  let attempt = 0;
-  const maxAttempts = 3;
+  // 2. HTTP POST to Main Site ISR /api/revalidate with multi-port localhost fallback
+  const targetUrls = Array.from(
+    new Set([env.MAIN_SITE_URL, "http://localhost:3001", "http://localhost:3000"])
+  );
+
   let success = false;
   let lastError = "";
 
-  while (attempt < maxAttempts && !success) {
-    attempt++;
+  for (const baseUrl of targetUrls) {
     try {
-      const response = await fetch(`${env.MAIN_SITE_URL}/api/revalidate`, {
+      const response = await fetch(`${baseUrl}/api/revalidate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -54,15 +55,10 @@ export async function syncMutationToMainSite(options: SyncMutationOptions) {
 
       if (response.ok) {
         success = true;
-      } else {
-        const text = await response.text();
-        lastError = `HTTP ${response.status}: ${text}`;
+        break;
       }
     } catch (err: any) {
       lastError = err.message;
-      if (attempt < maxAttempts) {
-        await new Promise((res) => setTimeout(res, 500 * Math.pow(2, attempt)));
-      }
     }
   }
 
@@ -76,8 +72,7 @@ export async function syncMutationToMainSite(options: SyncMutationOptions) {
         payload: { tags, paths, entityId, entityName, actor },
         status: success ? "SUCCESS" : "FAILED",
         errorMessage: success ? null : lastError,
-        retryCount: attempt - 1,
-        lastRetryAt: attempt > 1 ? new Date() : null,
+        retryCount: 0,
       },
     });
   } catch (err: any) {

@@ -64,8 +64,8 @@ export default function InventoryPage() {
   const [isSubmittingAdjust, setIsSubmittingAdjust] = useState(false);
 
   // Load Batches with Filters
-  const loadBatches = async () => {
-    setLoading(true);
+  const loadBatches = async (silent = false) => {
+    if (!silent && batches.length === 0) setLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
@@ -90,8 +90,8 @@ export default function InventoryPage() {
   };
 
   // Load Stock Ledger
-  const loadLedger = async () => {
-    setLedgerLoading(true);
+  const loadLedger = async (silent = false) => {
+    if (!silent && ledgerMovements.length === 0) setLedgerLoading(true);
     try {
       const res = await apiRequest(`/inventory/ledger?page=${ledgerPage}&limit=20`);
       setLedgerMovements(res.data || []);
@@ -103,13 +103,14 @@ export default function InventoryPage() {
     }
   };
 
+  // Preload and reload on filter/page changes (independent of tab switching for 0ms latency)
   useEffect(() => {
-    if (activeTab === "batches") {
-      loadBatches();
-    } else {
-      loadLedger();
-    }
-  }, [activeTab, page, limit, expiryDays, stockStatus, isBlockedFilter]);
+    loadBatches(batches.length > 0);
+  }, [page, limit, expiryDays, stockStatus, isBlockedFilter]);
+
+  useEffect(() => {
+    loadLedger(ledgerMovements.length > 0);
+  }, [ledgerPage]);
 
   // Debounced search trigger (resets page to 1)
   useEffect(() => {
@@ -352,8 +353,7 @@ export default function InventoryPage() {
         )}
 
         {/* BATCHES VIEW: FULL CONTROLS & TABLE */}
-        {activeTab === "batches" ? (
-          <div className="space-y-4">
+        <div className={activeTab === "batches" ? "space-y-4 block" : "hidden"}>
             {/* Filter Bar */}
             <div className="bg-white p-5 rounded-2xl border border-[#E4E7E9] shadow-xs space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
@@ -663,9 +663,9 @@ export default function InventoryPage() {
               )}
             </div>
           </div>
-        ) : (
-          /* STOCK MOVEMENT LEDGER VIEW */
-          <div className="bg-white rounded-2xl border border-[#E4E7E9] shadow-sm overflow-hidden">
+
+        {/* STOCK MOVEMENT LEDGER VIEW */}
+        <div className={activeTab === "ledger" ? "bg-white rounded-2xl border border-[#E4E7E9] shadow-sm overflow-hidden block" : "hidden"}>
             <div className="p-4 border-b border-[#E4E7E9] bg-[#FAFAFA] flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-sm text-[#0F2A22]">Stock Adjustment &amp; Movement Audit Ledger</h3>
@@ -789,7 +789,7 @@ export default function InventoryPage() {
               </div>
             )}
           </div>
-        )}
+        </div>
 
         {/* ADJUST STOCK MODAL */}
         {adjustBatch && (
