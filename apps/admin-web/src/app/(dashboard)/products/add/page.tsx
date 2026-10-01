@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Topbar } from "../../../../components/shell/Topbar";
 import { Stepper } from "../../../../components/common/Stepper";
@@ -141,6 +141,79 @@ export default function AddProductPage() {
     "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop&q=80",
   ]);
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Invalid File Type", { description: `${file.name} is not an image file.` });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (result) {
+          setImages((prev) => {
+            const updated = [...prev, result];
+            setSelectedImageIdx(updated.length - 1);
+            return updated;
+          });
+          toast.success("Image Imported", { description: `${file.name} imported from your files.` });
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = "";
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Invalid File Type", { description: `${file.name} is not an image.` });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (result) {
+          setImages((prev) => {
+            const updated = [...prev, result];
+            setSelectedImageIdx(updated.length - 1);
+            return updated;
+          });
+          toast.success("Image Imported", { description: `${file.name} imported.` });
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemoveImage = (idxToRemove: number) => {
+    if (images.length <= 1) {
+      toast.info("At least one image is required.");
+      return;
+    }
+    setImages((prev) => {
+      const updated = prev.filter((_, idx) => idx !== idxToRemove);
+      if (selectedImageIdx >= updated.length) {
+        setSelectedImageIdx(Math.max(0, updated.length - 1));
+      }
+      return updated;
+    });
+  };
+
   const [selectedTags, setSelectedTags] = useState<string[]>(["Antibiotics", "Schedule H Rx"]);
 
   const packSize = packSizeOption === "Custom Pack Size" ? customPackSize : packSizeOption;
@@ -935,40 +1008,110 @@ export default function AddProductPage() {
                 <span className="text-xs text-[#5B6B65]">Primary</span>
               </div>
 
-              {/* Large Image Preview */}
-              <div className="w-full aspect-square rounded-2xl bg-[#F5F6F7] border border-[#E4E7E9] flex items-center justify-center p-4 overflow-hidden relative group">
+              {/* Hidden File Explorer Input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileChange}
+                className="hidden"
+              />
+
+              {/* Large Image Preview with Click-to-Upload & Drag-and-Drop */}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                title="Click to open File Explorer or drag and drop images"
+                className={`w-full aspect-square rounded-2xl border-2 flex items-center justify-center p-4 overflow-hidden relative group cursor-pointer transition ${
+                  isDragging
+                    ? "border-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.05)] scale-[1.01]"
+                    : "border-[#E4E7E9] bg-[#F5F6F7] hover:border-[hsl(var(--primary))]"
+                }`}
+              >
                 <img
                   src={images[selectedImageIdx] || images[0]}
                   alt="Medicine Preview"
-                  className="max-h-full max-w-full object-contain"
+                  className="max-h-full max-w-full object-contain transition duration-200 group-hover:opacity-85"
                 />
+
+                {/* Hover Overlay indicating File Explorer Upload */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 text-white">
+                  <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center">
+                    <UploadCloud className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-xs font-bold">Choose from File Explorer</span>
+                  <span className="text-[10px] text-white/80">Click or drag & drop</span>
+                </div>
+
+                {/* Delete Current Image Button (if more than 1 image) */}
+                {images.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveImage(selectedImageIdx);
+                    }}
+                    title="Remove this image"
+                    className="absolute top-3 right-3 p-1.5 rounded-lg bg-white/90 text-[#DC2626] hover:bg-white shadow-xs opacity-0 group-hover:opacity-100 transition z-10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
 
-              {/* Thumbnail Strip with Add Image Button */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                {images.map((img, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setSelectedImageIdx(idx)}
-                    className={`w-14 h-14 rounded-xl border-2 overflow-hidden flex-shrink-0 p-1 transition ${
-                      selectedImageIdx === idx ? "border-[hsl(var(--primary))]" : "border-[#E4E7E9]"
-                    }`}
-                  >
-                    <img src={img} alt="Thumb" className="w-full h-full object-cover rounded-lg" />
-                  </button>
-                ))}
+              {/* Thumbnail Strip with File Explorer Add Button */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  {images.map((img, idx) => (
+                    <div key={idx} className="relative group/thumb flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedImageIdx(idx)}
+                        className={`w-14 h-14 rounded-xl border-2 overflow-hidden p-1 transition ${
+                          selectedImageIdx === idx ? "border-[hsl(var(--primary))]" : "border-[#E4E7E9]"
+                        }`}
+                      >
+                        <img src={img} alt="Thumb" className="w-full h-full object-cover rounded-lg" />
+                      </button>
+                      {images.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(idx)}
+                          title="Remove image"
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#DC2626] text-white flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition shadow-xs text-xs"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
 
-                {/* Add image URL button */}
+                  {/* Add Image Button -> Opens Native File Explorer */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Import Image from File Explorer"
+                    className="w-14 h-14 rounded-xl border-2 border-dashed border-[#E4E7E9] flex flex-col items-center justify-center text-[#5B6B65] hover:border-[hsl(var(--primary))] hover:text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.03)] transition flex-shrink-0 cursor-pointer"
+                  >
+                    <Plus className="w-5 h-5" />
+                    <span className="text-[8px] font-bold mt-0.5">ADD</span>
+                  </button>
+                </div>
+
+                {/* Primary Button to Trigger File Explorer */}
                 <button
                   type="button"
-                  onClick={() => {
-                    const sample = prompt("Enter Medicine Packaging Image URL:");
-                    if (sample && sample.trim()) setImages([...images, sample.trim()]);
-                  }}
-                  className="w-14 h-14 rounded-xl border-2 border-dashed border-[#E4E7E9] flex items-center justify-center text-[#5B6B65] hover:border-[hsl(var(--primary))] hover:text-[hsl(var(--primary))] transition flex-shrink-0"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full py-2.5 px-3 bg-[#F4F6F5] hover:bg-[#E9ECEB] text-[#0B4A3A] border border-[#D7DEDB] rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <Plus className="w-5 h-5" />
+                  <UploadCloud className="w-4 h-4 text-[#0B4A3A]" />
+                  <span>Import Images from Computer</span>
                 </button>
               </div>
 
