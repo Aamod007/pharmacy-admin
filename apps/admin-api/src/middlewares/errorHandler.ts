@@ -33,7 +33,7 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
     });
   }
 
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+  if (err?.name === "PrismaClientKnownRequestError" || (err && typeof err === "object" && typeof (err as any).code === "string" && (err as any).code.startsWith("P"))) {
     if (err.code === "P2002") {
       const target = (err.meta?.target as string[])?.join(", ") || "field";
       return res.status(409).json({
