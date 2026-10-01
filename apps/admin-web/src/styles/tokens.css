@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Pharmico Brand Palette */
+  --primary: 165 74% 17%;       /* #0B4A3A - Dark Green */
+  --primary-foreground: 0 0% 100%;
+  --cta: 160 84% 39%;           /* #10B981 - Vibrant Emerald */
+  --cta-foreground: 0 0% 100%;
+  --accent: 42 90% 61%;          /* #F5C043 - Warm Yellow */
+  --accent-foreground: 165 74% 17%;
+  
+  --surface: 0 0% 100%;          /* #FFFFFF - Pure White */
+  --page-bg: 150 7% 96%;         /* #F4F6F5 - Soft Sage Page Tint */
+  --cream-bg: 35 60% 95%;        /* #FAF3EA - Warm Cream */
+  --input-bg: 150 10% 96%;       /* #F1F4F2 */
+  --border: 156 10% 86%;         /* #D7DEDB */
+  --text-main: 165 47% 11%;      /* #0F2A22 */
+  --text-muted: 160 8% 39%;      /* #5B6B65 */
+
+  --status-success: 142 76% 36%; /* #16A34A */
+  --status-warning: 38 92% 50%;  /* #F59E0B */
+  --status-danger: 0 72% 51%;    /* #DC2626 */
+  --status-info: 165 74% 25%;    /* #0B4A3A */
+
+  --card-radius: 20px;
+  --input-radius: 12px;
+}
+
+body {
+  background-color: #F4F6F5;
+  color: #0F2A22;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
