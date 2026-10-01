@@ -91,9 +91,10 @@ export default function AddProductPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Categories & Brands list
+  // Categories & Brands list (from Supabase)
   const [categories, setCategories] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(true);
 
   // Step 1: Medicine Identification
   const [name, setName] = useState("");
@@ -272,16 +273,21 @@ export default function AddProductPage() {
   useEffect(() => {
     async function fetchMetadata() {
       try {
+        setIsLoadingMetadata(true);
         const [cRes, bRes] = await Promise.all([
           apiRequest("/categories"),
           apiRequest("/brands"),
         ]);
-        setCategories(cRes.data || []);
-        setBrands(bRes.data || []);
-        if (cRes.data?.[0]) setCategoryId(cRes.data[0].id);
-        if (bRes.data?.[0]) setBrandId(bRes.data[0].id);
+        const catData = cRes.data || [];
+        const brandData = bRes.data || [];
+        setCategories(catData);
+        setBrands(brandData);
+        if (catData.length > 0) setCategoryId((prev) => prev || catData[0].id);
+        if (brandData.length > 0) setBrandId((prev) => prev || brandData[0].id);
       } catch (err) {
-        console.error(err);
+        console.error("Failed to load catalog metadata from Supabase:", err);
+      } finally {
+        setIsLoadingMetadata(false);
       }
     }
     fetchMetadata();
@@ -303,6 +309,23 @@ export default function AddProductPage() {
     }
     if (!composition.trim()) {
       toast.error("Please enter active salt / chemical composition");
+      setCurrentStep(1);
+      return;
+    }
+    const effectiveBrandId = brandId || brands[0]?.id;
+    const effectiveCategoryId = categoryId || categories[0]?.id;
+
+    if (!effectiveBrandId) {
+      toast.error("Please select a pharmaceutical brand", {
+        description: "Brands are stored dynamically in your Supabase database.",
+      });
+      setCurrentStep(1);
+      return;
+    }
+    if (!effectiveCategoryId) {
+      toast.error("Please select a medicine category", {
+        description: "Categories are stored dynamically in your Supabase database.",
+      });
       setCurrentStep(1);
       return;
     }
@@ -329,8 +352,8 @@ export default function AddProductPage() {
         countryOfOrigin: "India",
         prescriptionRequired,
         scheduleType,
-        brandId: brandId || brands[0]?.id,
-        categoryId: categoryId || categories[0]?.id,
+        brandId: effectiveBrandId,
+        categoryId: effectiveCategoryId,
         images: images.filter((img) => img && img.trim().length > 0),
         tags: selectedTags,
         gstRate: Number(gstRate),
@@ -487,17 +510,36 @@ export default function AddProductPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-[#5B6B65] mb-1.5">Brand Entity</label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-bold text-[#5B6B65]">
+                          Brand Entity <span className="text-red-500">*</span>
+                        </label>
+                        <a
+                          href="/brands"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[11px] text-[hsl(var(--primary))] font-semibold hover:underline"
+                        >
+                          + New Brand
+                        </a>
+                      </div>
                       <select
                         value={brandId}
                         onChange={(e) => setBrandId(e.target.value)}
-                        className="w-full px-4 py-2.5 bg-[#F1F3F4] rounded-xl text-xs font-bold text-[#0F2A22] focus:outline-none"
+                        disabled={isLoadingMetadata}
+                        className="w-full px-4 py-2.5 bg-[#F1F3F4] rounded-xl text-xs font-bold text-[#0F2A22] focus:outline-none disabled:opacity-60"
                       >
-                        {brands.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name}
-                          </option>
-                        ))}
+                        {isLoadingMetadata ? (
+                          <option value="">Loading brands from Supabase...</option>
+                        ) : brands.length === 0 ? (
+                          <option value="">No brands found in database</option>
+                        ) : (
+                          brands.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name}
+                            </option>
+                          ))
+                        )}
                       </select>
                     </div>
                     <div>
@@ -1117,19 +1159,36 @@ export default function AddProductPage() {
 
               {/* Medicine Category Selector */}
               <div>
-                <label className="block text-xs font-bold text-[#5B6B65] mb-1.5">
-                  Medicine Inventory Category
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-[#5B6B65]">
+                    Medicine Inventory Category <span className="text-red-500">*</span>
+                  </label>
+                  <a
+                    href="/categories"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] text-[hsl(var(--primary))] font-semibold hover:underline"
+                  >
+                    + New Category
+                  </a>
+                </div>
                 <select
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-[#F1F3F4] rounded-xl text-xs font-bold text-[#0F2A22] focus:outline-none"
+                  disabled={isLoadingMetadata}
+                  className="w-full px-4 py-2.5 bg-[#F1F3F4] rounded-xl text-xs font-bold text-[#0F2A22] focus:outline-none disabled:opacity-60"
                 >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
+                  {isLoadingMetadata ? (
+                    <option value="">Loading categories from Supabase...</option>
+                  ) : categories.length === 0 ? (
+                    <option value="">No categories found in database</option>
+                  ) : (
+                    categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 

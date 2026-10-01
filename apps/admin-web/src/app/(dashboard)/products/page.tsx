@@ -118,74 +118,104 @@ export default function ProductsListPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E4E7E9]">
-              {filteredProducts.map((p) => (
-                <tr key={p.id} className="hover:bg-[#F9FAFB] transition cursor-pointer">
-                  <td className="py-3.5 px-6 flex items-center gap-3">
-                    {p.image ? (
-                      <img
-                        src={p.image}
-                        alt={p.name}
-                        className="w-10 h-10 rounded-xl object-cover bg-gray-100 border border-[#E4E7E9] flex-shrink-0"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-xl bg-[#FAF3EA] border border-[#E4E7E9] flex items-center justify-center text-[#0B4A3A] flex-shrink-0">
-                        <Package className="w-5 h-5 opacity-70" />
+              {loading &&
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-3.5 px-6 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gray-200 flex-shrink-0" />
+                      <div className="space-y-1.5 flex-1">
+                        <div className="h-4 bg-gray-200 rounded w-48" />
+                        <div className="h-3 bg-gray-100 rounded w-28" />
                       </div>
-                    )}
-                    <div>
-                      <p className="font-bold text-[#0F2A22] text-sm">{p.name}</p>
-                      <p className="text-xs text-[#5B6B65]">
-                        {typeof p.brand === "object" ? p.brand?.name : p.brand}
+                    </td>
+                    <td className="py-3.5 px-4"><div className="h-3.5 bg-gray-200 rounded w-20" /></td>
+                    <td className="py-3.5 px-4"><div className="h-3.5 bg-gray-200 rounded w-28" /></td>
+                    <td className="py-3.5 px-4"><div className="h-3.5 bg-gray-200 rounded w-16" /></td>
+                    <td className="py-3.5 px-4"><div className="h-5 bg-gray-200 rounded-full w-20" /></td>
+                    <td className="py-3.5 px-4"><div className="h-5 bg-gray-200 rounded-lg w-24" /></td>
+                    <td className="py-3.5 px-4"><div className="h-5 bg-gray-200 rounded-full w-16" /></td>
+                  </tr>
+                ))}
+
+              {!loading &&
+                filteredProducts.map((p) => (
+                  <tr key={p.id} className="hover:bg-[#F9FAFB] transition cursor-pointer">
+                    <td className="py-3.5 px-6 flex items-center gap-3">
+                      {p.image ? (
+                        <img
+                          src={p.image}
+                          alt={p.name}
+                          className="w-10 h-10 rounded-xl object-cover bg-gray-100 border border-[#E4E7E9] flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-[#FAF3EA] border border-[#E4E7E9] flex items-center justify-center text-[#0B4A3A] flex-shrink-0">
+                          <Package className="w-5 h-5 opacity-70" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-bold text-[#0F2A22] text-sm">{p.name}</p>
+                        <p className="text-xs text-[#5B6B65]">
+                          {typeof p.brand === "object" ? p.brand?.name : p.brand}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-xs text-[#5B6B65] font-semibold">{p.sku}</td>
+                    <td className="py-3.5 px-4 text-xs font-bold text-[#0B4A3A]">
+                      {typeof p.category === "object" ? p.category?.name : p.category}
+                    </td>
+                    <td className="py-3.5 px-4 font-bold text-[#0F2A22]">{formatCurrency(p.price)}</td>
+                    <td className="py-3.5 px-4">
+                      {p.totalStock === 0 ? (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-[#FEE2E2] text-[#DC2626]">
+                          0 units (Out of Stock)
+                        </span>
+                      ) : p.totalStock <= 15 ? (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-[#FEF3C7] text-[#D97706] flex items-center gap-1 w-max">
+                          <AlertTriangle className="w-3 h-3" /> {p.totalStock} units (Low)
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-[#DCFCE7] text-[#16A34A]">
+                          {p.totalStock} units
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {p.prescriptionRequired ? (
+                        <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#FAF3EA] text-[#0B4A3A] border border-[#F3E5D4] flex items-center gap-1 w-max">
+                          <Shield className="w-3 h-3 text-[#0B4A3A]" /> {p.scheduleType || "Schedule H"}
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#F1F3F4] text-[#5B6B65] w-max">
+                          OTC General
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                          p.isActive ? "bg-[#DCFCE7] text-[#16A34A]" : "bg-[#F1F3F4] text-[#5B6B65]"
+                        }`}
+                      >
+                        {p.isActive ? "In Catalog" : "Draft"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+
+              {!loading && filteredProducts.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <div className="w-12 h-12 rounded-full bg-[#F5F6F7] flex items-center justify-center text-[#5B6B65]">
+                        <Package className="w-6 h-6" />
+                      </div>
+                      <p className="font-bold text-sm text-[#0F2A22]">No medicines found</p>
+                      <p className="text-xs text-[#5B6B65] max-w-sm">
+                        {search || selectedCategory
+                          ? "Try clearing your search query or selecting a different category filter."
+                          : "Your Supabase medicine catalog is currently empty. Click 'Add Medicine +' to register your first product."}
                       </p>
                     </div>
-                  </td>
-                  <td className="py-3.5 px-4 font-mono text-xs text-[#5B6B65] font-semibold">{p.sku}</td>
-                  <td className="py-3.5 px-4 text-xs font-bold text-[#0B4A3A]">
-                    {typeof p.category === "object" ? p.category?.name : p.category}
-                  </td>
-                  <td className="py-3.5 px-4 font-bold text-[#0F2A22]">{formatCurrency(p.price)}</td>
-                  <td className="py-3.5 px-4">
-                    {p.totalStock === 0 ? (
-                      <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-[#FEE2E2] text-[#DC2626]">
-                        0 units (Out of Stock)
-                      </span>
-                    ) : p.totalStock <= 15 ? (
-                      <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-[#FEF3C7] text-[#D97706] flex items-center gap-1 w-max">
-                        <AlertTriangle className="w-3 h-3" /> {p.totalStock} units (Low)
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-[#DCFCE7] text-[#16A34A]">
-                        {p.totalStock} units
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3.5 px-4">
-                    {p.prescriptionRequired ? (
-                      <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#FAF3EA] text-[#0B4A3A] border border-[#F3E5D4] flex items-center gap-1 w-max">
-                        <Shield className="w-3 h-3 text-[#0B4A3A]" /> {p.scheduleType || "Schedule H"}
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#F1F3F4] text-[#5B6B65] w-max">
-                        OTC General
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                        p.isActive ? "bg-[#DCFCE7] text-[#16A34A]" : "bg-[#F1F3F4] text-[#5B6B65]"
-                      }`}
-                    >
-                      {p.isActive ? "In Catalog" : "Draft"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-
-              {filteredProducts.length === 0 && !loading && (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-xs text-[#5B6B65]">
-                    No medicines match the selected search or category filters.
                   </td>
                 </tr>
               )}

@@ -13,7 +13,7 @@ export const productOverviewSchema = z.object({
   scheduleType: z.nativeEnum(ScheduleType).default(ScheduleType.OTC),
   manufacturer: z.string().min(2, "Manufacturer name is required"),
   countryOfOrigin: z.string().default("India"),
-  images: z.array(z.string().url("Must be a valid image URL")).min(1, "At least 1 product image is required"),
+  images: z.array(z.string().min(1, "Product image cannot be empty")).min(1, "At least 1 product image is required"),
   isFeatured: z.boolean().default(false),
   isBestSeller: z.boolean().default(false),
 });

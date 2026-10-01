@@ -36,7 +36,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const [catalogOpen, setCatalogOpen] = useState(
-    pathname?.includes("/products") || pathname?.includes("/categories") || false
+    pathname?.includes("/products") || pathname?.includes("/categories") || pathname?.includes("/brands") || false
   );
 
   const navGroups: NavGroup[] = [
@@ -58,6 +58,7 @@ export function Sidebar() {
           children: [
             { name: "Medicine Catalog", href: "/products" },
             { name: "Categories", href: "/categories" },
+            { name: "Brands", href: "/brands" },
             { name: "Add Medicine", href: "/products/add" },
           ],
         },
