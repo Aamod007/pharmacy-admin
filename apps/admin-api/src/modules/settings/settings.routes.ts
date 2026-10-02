@@ -11,5 +11,6 @@ router.get("/", requirePermission("settings:read"), (req, res, next) => settings
 router.put("/", requirePermission("settings:update"), auditMiddleware("Setting", "UPDATE"), (req, res, next) => settingsController.updateSettings(req, res).catch(next));
 router.get("/health", (req, res, next) => settingsController.checkHealth(req, res).catch(next));
 router.post("/revalidate-now", requirePermission("settings:update"), (req, res, next) => settingsController.manualRevalidate(req, res).catch(next));
+router.post("/retry-sync", requirePermission("settings:update"), (req, res, next) => settingsController.retrySync(req, res).catch(next));
 
 export default router;

@@ -1,7 +1,7 @@
 import prisma from "@pharmacy-admin/db";
 import { redis, isRedisConnected } from "../../lib/redis";
 import { env } from "../../config/env";
-import { syncMutationToMainSite } from "../../lib/revalidate";
+import { syncMutationToMainSite, retryFailedRevalidations } from "../../lib/revalidate";
 
 export class SettingsService {
   async getAllSettings() {
@@ -91,6 +91,15 @@ export class SettingsService {
       actor,
     });
     return { success: true, message: "Manual store revalidation published" };
+  }
+
+  async retryFailedSync() {
+    const result = await retryFailedRevalidations();
+    return {
+      success: true,
+      message: `Retried ${result.retried} failed webhook(s): ${result.succeeded} succeeded, ${result.failed} failed.`,
+      ...result,
+    };
   }
 }
 

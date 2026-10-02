@@ -3,7 +3,7 @@ import "dotenv/config";
 
 export default defineConfig({
   test: {
-    include: ["tests/unit/**/*.test.ts"],
+    include: ["tests/**/*.test.ts"],
     environment: "node",
     testTimeout: 60000,
     hookTimeout: 60000,

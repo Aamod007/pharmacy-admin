@@ -79,3 +79,75 @@ export async function syncMutationToMainSite(options: SyncMutationOptions) {
     console.error("Failed to write to admin_notification_logs:", err.message);
   }
 }
+
+export async function retryFailedRevalidations(): Promise<{ retried: number; succeeded: number; failed: number }> {
+  const failedLogs = await prisma.adminNotificationLog.findMany({
+    where: {
+      channel: "REVALIDATION_WEBHOOK",
+      status: "FAILED",
+      retryCount: { lt: 5 },
+    },
+    take: 25,
+    orderBy: { createdAt: "asc" },
+  });
+
+  let succeeded = 0;
+  let failed = 0;
+
+  for (const log of failedLogs) {
+    const payload = log.payload as any;
+    const tags = payload?.tags || [];
+    const paths = payload?.paths || [];
+
+    const targetUrls = Array.from(
+      new Set([env.MAIN_SITE_URL, "http://localhost:3001", "http://localhost:3000"])
+    );
+
+    let ok = false;
+    let lastError = "";
+
+    for (const baseUrl of targetUrls) {
+      try {
+        const response = await fetch(`${baseUrl}/api/revalidate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-revalidate-secret": env.REVALIDATE_SECRET,
+          },
+          body: JSON.stringify({ tags, paths }),
+        });
+
+        if (response.ok) {
+          ok = true;
+          break;
+        }
+      } catch (err: any) {
+        lastError = err.message;
+      }
+    }
+
+    if (ok) {
+      succeeded++;
+      await prisma.adminNotificationLog.update({
+        where: { id: log.id },
+        data: {
+          status: "SUCCESS",
+          retryCount: log.retryCount + 1,
+          errorMessage: null,
+        },
+      });
+    } else {
+      failed++;
+      await prisma.adminNotificationLog.update({
+        where: { id: log.id },
+        data: {
+          retryCount: log.retryCount + 1,
+          errorMessage: lastError || "Retry attempt failed",
+        },
+      });
+    }
+  }
+
+  return { retried: failedLogs.length, succeeded, failed };
+}
+

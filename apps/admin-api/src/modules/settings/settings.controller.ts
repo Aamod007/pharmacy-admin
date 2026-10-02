@@ -23,6 +23,11 @@ export class SettingsController {
     const result = await settingsService.triggerManualRevalidate(actor);
     return res.json(result);
   }
+
+  async retrySync(req: Request, res: Response) {
+    const result = await settingsService.retryFailedSync();
+    return res.json(result);
+  }
 }
 
 export const settingsController = new SettingsController();
