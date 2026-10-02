@@ -11,15 +11,19 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchOrders() {
+      setLoading(true);
       try {
         const query = statusFilter !== "ALL" ? `?status=${statusFilter}` : "";
         const res = await apiRequest(`/orders${query}`);
         setOrders(res.data || []);
       } catch (err) {
         console.error(err);
+      } finally {
+        setLoading(false);
       }
     }
     fetchOrders();
@@ -79,40 +83,60 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E4E7E9]">
-              {orders.map((o) => (
-                <tr key={o.id} className="hover:bg-[#F1F3F4] transition">
-                  <td className="py-3 px-6 font-bold text-[#0F2A22]">
-                    {o.orderNumber}
-                  </td>
-                  <td className="py-3 px-4">
-                    <p className="font-semibold text-[#0F2A22]">{o.user?.name}</p>
-                    <p className="text-xs text-[#5B6B65]">{o.user?.phone}</p>
-                  </td>
-                  <td className="py-3 px-4 text-xs text-[#5B6B65]">{formatDateIST(o.createdAt)}</td>
-                  <td className="py-3 px-4 text-xs font-bold text-[#0F2A22]">{o.paymentMethod}</td>
-                  <td className="py-3 px-4 font-bold text-[#0F2A22]">{formatCurrency(o.totalAmount)}</td>
-                  <td className="py-3 px-4">
-                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#DCFCE7] text-[#16A34A]">
-                      {o.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 flex items-center gap-2">
-                    <button
-                      onClick={() => setSelectedOrder(o)}
-                      className="p-1.5 bg-white border border-[#E4E7E9] rounded-lg hover:bg-[#F1F3F4]"
-                    >
-                      <Eye className="w-4 h-4 text-[#5B6B65]" />
-                    </button>
-                    <button
-                      onClick={() => handleDownloadInvoice(o.id)}
-                      className="p-1.5 bg-white border border-[#E4E7E9] rounded-lg hover:bg-[#F1F3F4]"
-                      title="Download GST Invoice"
-                    >
-                      <Download className="w-4 h-4 text-[#5B6B65]" />
-                    </button>
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-[#5B6B65]">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-6 h-6 border-2 border-[#0B4A3A] border-t-transparent rounded-full animate-spin" />
+                      <span className="text-xs font-semibold">Loading orders from Supabase...</span>
+                    </div>
                   </td>
                 </tr>
-              ))}
+              ) : orders.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-[#5B6B65]">
+                    <div className="flex flex-col items-center gap-2">
+                      <p className="font-semibold text-sm text-[#0F2A22]">No Orders Found</p>
+                      <p className="text-xs">No orders matching status &quot;{statusFilter}&quot; exist in the store.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                orders.map((o) => (
+                  <tr key={o.id} className="hover:bg-[#F1F3F4] transition">
+                    <td className="py-3 px-6 font-bold text-[#0F2A22]">
+                      {o.orderNumber}
+                    </td>
+                    <td className="py-3 px-4">
+                      <p className="font-semibold text-[#0F2A22]">{o.user?.name}</p>
+                      <p className="text-xs text-[#5B6B65]">{o.user?.phone}</p>
+                    </td>
+                    <td className="py-3 px-4 text-xs text-[#5B6B65]">{formatDateIST(o.createdAt)}</td>
+                    <td className="py-3 px-4 text-xs font-bold text-[#0F2A22]">{o.paymentMethod}</td>
+                    <td className="py-3 px-4 font-bold text-[#0F2A22]">{formatCurrency(o.totalAmount)}</td>
+                    <td className="py-3 px-4">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#DCFCE7] text-[#16A34A]">
+                        {o.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 flex items-center gap-2">
+                      <button
+                        onClick={() => setSelectedOrder(o)}
+                        className="p-1.5 bg-white border border-[#E4E7E9] rounded-lg hover:bg-[#F1F3F4]"
+                      >
+                        <Eye className="w-4 h-4 text-[#5B6B65]" />
+                      </button>
+                      <button
+                        onClick={() => handleDownloadInvoice(o.id)}
+                        className="p-1.5 bg-white border border-[#E4E7E9] rounded-lg hover:bg-[#F1F3F4]"
+                        title="Download GST Invoice"
+                      >
+                        <Download className="w-4 h-4 text-[#5B6B65]" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
