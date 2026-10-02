@@ -13,9 +13,18 @@ interface RecordAuditLogOptions {
 
 export async function recordAuditLog(options: RecordAuditLogOptions) {
   try {
+    let validAdminUserId: string | undefined = undefined;
+    if (options.adminUserId) {
+      const exists = await prisma.adminUser.findUnique({
+        where: { id: options.adminUserId },
+        select: { id: true },
+      });
+      if (exists) validAdminUserId = options.adminUserId;
+    }
+
     await prisma.adminAuditLog.create({
       data: {
-        adminUserId: options.adminUserId,
+        adminUserId: validAdminUserId,
         action: options.action,
         entity: options.entity,
         entityId: options.entityId,
