@@ -1,6 +1,8 @@
 import prisma from "@pharmacy-admin/db";
 import { OrderStatus, PaymentStatus } from "@pharmacy-admin/shared";
 import { sendEmailWithTemplate } from "../../lib/mailer";
+import { inventoryService } from "../inventory/inventory.service";
+import { syncMutationToMainSite } from "../../lib/revalidate";
 
 // Strict state transition map
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -121,7 +123,7 @@ export class OrdersService {
     note: string | undefined,
     adminUserId: string
   ) {
-    return prisma.$transaction(async (tx) => {
+    const { updated, restoredProductIds } = await prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { id: orderId },
         include: { prescription: true, items: true, user: true },
@@ -146,25 +148,104 @@ export class OrdersService {
         }
       }
 
-      const updated = await tx.order.update({
+      // S3 & S8: If moving to CONFIRMED, allocate stock via FEFO if not already allocated
+      if (newStatus === OrderStatus.CONFIRMED) {
+        const existingAllocations = await tx.adminStockMovement.count({
+          where: { referenceId: orderId, type: "SALE" },
+        });
+        if (existingAllocations === 0) {
+          await inventoryService.allocateFefoOrder(
+            orderId,
+            { adminId: adminUserId, email: "" },
+            tx
+          );
+        }
+      }
+
+      // S8: If moving to CANCELLED, restore allocated batches exactly
+      const restoredProducts = new Set<string>();
+      if (newStatus === OrderStatus.CANCELLED) {
+        const salesMovements = await tx.adminStockMovement.findMany({
+          where: { referenceId: orderId, type: "SALE" },
+          include: { variant: { include: { product: true } } },
+        });
+
+        for (const sm of salesMovements) {
+          if (sm.batchId) {
+            const batch = await tx.inventoryBatch.findUnique({ where: { id: sm.batchId } });
+            if (batch) {
+              const previousStock = batch.quantity;
+              const newStock = previousStock + sm.quantity;
+              await tx.inventoryBatch.update({
+                where: { id: batch.id },
+                data: { quantity: newStock },
+              });
+
+              await tx.adminStockMovement.create({
+                data: {
+                  variantId: sm.variantId,
+                  batchId: batch.id,
+                  type: "RETURN_RESTOCK",
+                  quantity: sm.quantity,
+                  previousStock,
+                  newStock,
+                  referenceId: orderId,
+                  referenceType: "ORDER_CANCEL",
+                  reason: `Stock restored upon cancellation of order #${order.orderNumber}`,
+                  createdByAdminId: adminUserId,
+                },
+              });
+
+              if (sm.variant?.product) {
+                restoredProducts.add(sm.variant.product.id);
+              }
+            }
+          }
+        }
+      }
+
+      const updatedOrder = await tx.order.update({
         where: { id: orderId },
         data: {
           status: newStatus,
           isPaid: newStatus === OrderStatus.DELIVERED ? true : order.isPaid,
+          cancelReason: newStatus === OrderStatus.CANCELLED ? (note || "Cancelled by admin") : order.cancelReason,
         },
       });
+
+      let validUserId: string | null = null;
+      if (adminUserId) {
+        const userExists = await tx.user.findUnique({
+          where: { id: adminUserId },
+          select: { id: true },
+        });
+        if (userExists) validUserId = adminUserId;
+      }
 
       await tx.orderStatusHistory.create({
         data: {
           orderId,
           status: newStatus,
-          note,
-          changedByUserId: adminUserId,
+          note: note || (validUserId ? undefined : `Updated by admin`),
+          changedByUserId: validUserId,
         },
       });
 
-      return updated;
-    });
+      return { updated: updatedOrder, restoredProductIds: Array.from(restoredProducts) };
+    }, { maxWait: 15000, timeout: 60000 });
+
+    for (const prodId of restoredProductIds) {
+      syncMutationToMainSite({
+        type: "inventory.updated",
+        entityId: prodId,
+        entityName: `Stock restored from cancelled order #${orderId}`,
+        tags: ["products", "inventory"],
+        paths: ["/", "/products"],
+        actor: { adminId: adminUserId, email: "" },
+      });
+    }
+
+    return updated;
   }
 
   async addInternalNote(orderId: string, note: string) {
