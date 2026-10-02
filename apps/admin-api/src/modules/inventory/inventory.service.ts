@@ -6,6 +6,7 @@ import {
   PurchaseEntryCreateInput,
 } from "@pharmacy-admin/shared";
 import { syncMutationToMainSite } from "../../lib/revalidate";
+import { resolveAdminUserId } from "../../lib/admin-user";
 
 const TX_OPTIONS = { maxWait: 15000, timeout: 60000 };
 
@@ -163,6 +164,7 @@ export class InventoryService {
         },
       });
 
+      const validAdminId = await resolveAdminUserId(actor?.adminId, actor?.email, tx);
       const movement = await tx.adminStockMovement.create({
         data: {
           variantId: input.variantId,
@@ -173,7 +175,7 @@ export class InventoryService {
           newStock: input.quantity,
           referenceType: "BATCH_CREATION",
           reason: "Initial batch intake into inventory",
-          createdByAdminId: actor.adminId,
+          createdByAdminId: validAdminId,
         },
       });
 
@@ -225,6 +227,7 @@ export class InventoryService {
         data: updateData,
       });
 
+      const validAdminId = await resolveAdminUserId(actor?.adminId, actor?.email, tx);
       await tx.adminStockMovement.create({
         data: {
           variantId: batch.variantId,
@@ -235,7 +238,7 @@ export class InventoryService {
           newStock: batch.quantity,
           referenceType: "BATCH_EDIT",
           reason: input.reason || "Administrative batch metadata update",
-          createdByAdminId: actor.adminId,
+          createdByAdminId: validAdminId,
         },
       });
 
@@ -329,6 +332,9 @@ export class InventoryService {
       }
       const totalAmount = subtotal + totalTax;
 
+      const validAdminId = await resolveAdminUserId(actor?.adminId, actor?.email, tx);
+      const requiredAdminId = validAdminId || (await resolveAdminUserId(null, null, tx)) || "";
+
       const purchaseEntry = await tx.adminPurchaseEntry.create({
         data: {
           supplierId: input.supplierId,
@@ -339,7 +345,7 @@ export class InventoryService {
           totalAmount,
           status: "RECEIVED",
           notes: input.notes,
-          createdByAdminId: actor.adminId,
+          createdByAdminId: requiredAdminId,
         },
       });
 
@@ -422,7 +428,7 @@ export class InventoryService {
             referenceId: purchaseEntry.id,
             referenceType: "PURCHASE_ENTRY",
             reason: `Supplier Invoice #${input.invoiceNumber} from ${supplier.name}`,
-            createdByAdminId: actor.adminId,
+            createdByAdminId: validAdminId,
           },
         });
       }
@@ -479,6 +485,7 @@ export class InventoryService {
         data: { quantity: newStock },
       });
 
+      const validAdminId = await resolveAdminUserId(actor?.adminId, actor?.email, tx);
       const movement = await tx.adminStockMovement.create({
         data: {
           variantId: input.variantId,
@@ -489,7 +496,7 @@ export class InventoryService {
           newStock,
           referenceType: "MANUAL_ADJUSTMENT",
           reason: input.reason,
-          createdByAdminId: actor.adminId,
+          createdByAdminId: validAdminId,
         },
       });
 
@@ -538,6 +545,7 @@ export class InventoryService {
         data: { quantity: 0, isBlocked: true },
       });
 
+      const validAdminId = await resolveAdminUserId(actor?.adminId, actor?.email, tx);
       await tx.adminStockMovement.create({
         data: {
           variantId: batch.variantId,
@@ -548,7 +556,7 @@ export class InventoryService {
           newStock: 0,
           referenceType: "EXPIRY_WRITEOFF",
           reason: reason || "Statutory write-off of expired pharmaceuticals",
-          createdByAdminId: actor.adminId,
+          createdByAdminId: validAdminId,
         },
       });
 
@@ -598,6 +606,7 @@ export class InventoryService {
       });
       if (!order) throw new Error("Order not found");
 
+      const validAdminId = await resolveAdminUserId(actor?.adminId, actor?.email, tx);
       const allocations: any[] = [];
       const affectedProducts = new Set<string>();
 
@@ -644,7 +653,7 @@ export class InventoryService {
               referenceId: order.id,
               referenceType: "ORDER",
               reason: `Order #${order.orderNumber} dispensation`,
-              createdByAdminId: actor.adminId,
+              createdByAdminId: validAdminId,
             },
           });
 
@@ -817,6 +826,7 @@ export class InventoryService {
       data: { isBlocked },
     });
 
+    const validAdminId = await resolveAdminUserId(actor?.adminId, actor?.email);
     await prisma.adminStockMovement.create({
       data: {
         variantId: batch.variantId,
@@ -827,7 +837,7 @@ export class InventoryService {
         newStock: batch.quantity,
         referenceType: "QUARANTINE_TOGGLE",
         reason: isBlocked ? "Batch Quarantined / Blocked from Sale" : "Batch Unblocked for Sale",
-        createdByAdminId: actor.adminId,
+        createdByAdminId: validAdminId,
       },
     });
 

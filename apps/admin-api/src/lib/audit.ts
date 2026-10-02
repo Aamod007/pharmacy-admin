@@ -1,4 +1,5 @@
 import prisma from "@pharmacy-admin/db";
+import { resolveAdminUserId } from "./admin-user";
 
 interface RecordAuditLogOptions {
   adminUserId?: string;
@@ -15,11 +16,8 @@ export async function recordAuditLog(options: RecordAuditLogOptions) {
   try {
     let validAdminUserId: string | undefined = undefined;
     if (options.adminUserId) {
-      const exists = await prisma.adminUser.findUnique({
-        where: { id: options.adminUserId },
-        select: { id: true },
-      });
-      if (exists) validAdminUserId = options.adminUserId;
+      const resolved = await resolveAdminUserId(options.adminUserId);
+      if (resolved) validAdminUserId = resolved;
     }
 
     await prisma.adminAuditLog.create({

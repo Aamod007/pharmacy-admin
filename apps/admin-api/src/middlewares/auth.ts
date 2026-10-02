@@ -19,6 +19,8 @@ declare global {
   }
 }
 
+import { resolveAdminUserId } from "../lib/admin-user";
+
 export async function authenticateAdmin(req: Request, res: Response, next: NextFunction) {
   // 1. IP Allowlist check if configured
   if (env.ADMIN_ALLOWED_IPS && env.ADMIN_ALLOWED_IPS.trim()) {
@@ -48,9 +50,12 @@ export async function authenticateAdmin(req: Request, res: Response, next: NextF
     token = req.cookies.admin_access_token;
   }
 
+  // Resolve database administrator ID for default master admin context
+  const masterAdminId = (await resolveAdminUserId(null, "admin@pharmacy.com")) || "admin-master";
+
   // Default administrator context when login is not required
   const defaultAdmin: AdminAuthPayload = {
-    adminUserId: "admin-master",
+    adminUserId: masterAdminId,
     email: "admin@pharmacy.com",
     roleId: "admin",
     roleSlug: "ADMIN",
@@ -73,9 +78,13 @@ export async function authenticateAdmin(req: Request, res: Response, next: NextF
       return next();
     }
 
+    const resolvedUserId = (decoded.adminUserId === "admin-master")
+      ? masterAdminId
+      : (await resolveAdminUserId(decoded.adminUserId, decoded.email)) || masterAdminId;
+
     req.admin = {
-      adminUserId: decoded.adminUserId,
-      email: decoded.email,
+      adminUserId: resolvedUserId,
+      email: decoded.email || defaultAdmin.email,
       roleId: decoded.roleId || "admin",
       roleSlug: decoded.roleSlug || "ADMIN",
       permissions: decoded.permissions || ["*"],

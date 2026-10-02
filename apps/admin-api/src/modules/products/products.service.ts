@@ -1,6 +1,7 @@
 import prisma from "@pharmacy-admin/db";
 import { FullProductWizardInput } from "@pharmacy-admin/shared";
 import { syncMutationToMainSite } from "../../lib/revalidate";
+import { resolveAdminUserId } from "../../lib/admin-user";
 
 export class ProductsService {
   async listProducts(query: {
@@ -170,6 +171,7 @@ export class ProductsService {
             },
           });
 
+          const validAdminId = await resolveAdminUserId(actor?.adminId, actor?.email, tx);
           // Stock movement entry
           await tx.adminStockMovement.create({
             data: {
@@ -181,7 +183,7 @@ export class ProductsService {
               newStock: b.quantity,
               referenceType: "INITIAL_INVENTORY",
               reason: "Initial product stock batch entry",
-              createdByAdminId: actor.adminId,
+              createdByAdminId: validAdminId,
             },
           });
         }

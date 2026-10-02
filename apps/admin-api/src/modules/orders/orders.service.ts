@@ -3,6 +3,7 @@ import { OrderStatus, PaymentStatus } from "@pharmacy-admin/shared";
 import { sendEmailWithTemplate } from "../../lib/mailer";
 import { inventoryService } from "../inventory/inventory.service";
 import { syncMutationToMainSite } from "../../lib/revalidate";
+import { resolveAdminUserId } from "../../lib/admin-user";
 
 // Strict state transition map
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -146,9 +147,10 @@ export class OrdersService {
           where: { referenceId: orderId, type: "SALE" },
         });
         if (existingAllocations === 0) {
+          const validAdminId = await resolveAdminUserId(adminUserId, undefined, tx);
           await inventoryService.allocateFefoOrder(
             orderId,
-            { adminId: adminUserId, email: "" },
+            { adminId: validAdminId || "", email: "" },
             tx
           );
         }
@@ -161,6 +163,8 @@ export class OrdersService {
           where: { referenceId: orderId, type: "SALE" },
           include: { variant: { include: { product: true } } },
         });
+
+        const validAdminId = await resolveAdminUserId(adminUserId, undefined, tx);
 
         for (const sm of salesMovements) {
           if (sm.batchId) {
@@ -184,7 +188,7 @@ export class OrdersService {
                   referenceId: orderId,
                   referenceType: "ORDER_CANCEL",
                   reason: `Stock restored upon cancellation of order #${order.orderNumber}`,
-                  createdByAdminId: adminUserId,
+                  createdByAdminId: validAdminId,
                 },
               });
 

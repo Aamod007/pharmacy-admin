@@ -3,6 +3,7 @@ import prisma from "@pharmacy-admin/db";
 import { razorpay } from "../../lib/razorpay";
 import { RefundCreateInput } from "@pharmacy-admin/shared";
 import { env } from "../../config/env";
+import { resolveAdminUserId } from "../../lib/admin-user";
 
 export class PaymentsService {
   async listPayments(page = 1, limit = 20) {
@@ -68,6 +69,8 @@ export class PaymentsService {
 
       // Generate Credit Note if selected
       if (input.generateCreditNote) {
+        const validAdminId = await resolveAdminUserId(adminUserId, undefined, tx);
+        const requiredAdminId = validAdminId || (await resolveAdminUserId(null, null, tx)) || "";
         const creditNoteNumber = `CN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
         await tx.adminCreditNote.create({
           data: {
@@ -79,7 +82,7 @@ export class PaymentsService {
             gstAmount: Number((input.amount * 0.12).toFixed(2)),
             reason: input.reason,
             status: "ISSUED",
-            createdByAdminId: adminUserId,
+            createdByAdminId: requiredAdminId,
           },
         });
       }
