@@ -58,9 +58,6 @@ describe("Phase 4 & 5: Authentication, RBAC Matrix & Security Audit", () => {
         roleId: "role-rx",
         roleSlug: "PHARMACIST",
         permissions: [
-          "prescriptions:read",
-          "prescriptions:approve",
-          "prescriptions:reject",
           "orders:read",
           "inventory:read",
         ],
@@ -187,15 +184,15 @@ describe("Phase 4 & 5: Authentication, RBAC Matrix & Security Audit", () => {
       expect(denied.body.error?.code).toBe("FORBIDDEN");
     });
 
-    it("INVENTORY_MANAGER is DENIED (403) from prescription verification", async () => {
+    it("INVENTORY_MANAGER is DENIED (403) from staff management", async () => {
       const res = await request(app)
-        .get("/api/v1/prescriptions")
+        .get("/api/v1/staff/users")
         .set("Authorization", `Bearer ${inventoryManagerToken}`);
       expect(res.status).toBe(403);
       expect(res.body.error?.code).toBe("FORBIDDEN");
     });
 
-    it("PHARMACIST can read prescriptions but is DENIED (403) from modifying settings", async () => {
+    it("PHARMACIST can read orders but is DENIED (403) from modifying settings", async () => {
       const denied = await request(app)
         .put("/api/v1/settings")
         .set("Authorization", `Bearer ${pharmacistToken}`)
@@ -216,14 +213,14 @@ describe("Phase 4 & 5: Authentication, RBAC Matrix & Security Audit", () => {
       expect(denied.body.error?.code).toBe("FORBIDDEN");
     });
 
-    it("MARKETING role can access coupons but is DENIED (403) from prescription queue", async () => {
+    it("MARKETING role can access coupons but is DENIED (403) from staff management", async () => {
       const allowed = await request(app)
         .get("/api/v1/coupons")
         .set("Authorization", `Bearer ${marketingToken}`);
       expect(allowed.status).toBe(200);
 
       const denied = await request(app)
-        .get("/api/v1/prescriptions")
+        .get("/api/v1/staff/users")
         .set("Authorization", `Bearer ${marketingToken}`);
       expect(denied.status).toBe(403);
     });

@@ -47,12 +47,11 @@ export default function TermsOfServicePage() {
             </div>
 
             <div>
-              <h3 className="text-base font-semibold text-slate-900">2. Medical Prescription & Clinical Compliance</h3>
+              <h3 className="text-base font-semibold text-slate-900">2. Medicine Catalog & Statutory Compliance</h3>
               <p className="mt-1">
-                Registered Pharmacists reviewing prescriptions through the Rx Inspector must adhere strictly to the
-                Drugs and Cosmetics Act (1940 & Rules 1945) and Schedule H / H1 dispensing guidelines. Approving a
-                prescription digitally certifies that patient diagnosis, doctor credentials, and dosage safety have
-                been verified.
+                Authorized staff managing the medicine catalog and inventory must adhere strictly to the
+                Drugs and Cosmetics Act (1940 & Rules 1945) and retail dispensing guidelines. Product pricing,
+                HSN tax categories, and manufacturer details must be maintained accurately.
               </p>
             </div>
 
@@ -68,7 +67,7 @@ export default function TermsOfServicePage() {
             <div>
               <h3 className="text-base font-semibold text-slate-900">4. Immutable Audit Trails & Non-Repudiation</h3>
               <p className="mt-1">
-                All administrative actions—including customer record views, prescription validations, stock movements,
+                All administrative actions—including customer record views, stock movements,
                 pricing changes, and role assignments—are logged with IP address, user agent, and timestamps.
                 Tampering with audit logs is technically prevented via database constraints.
               </p>

@@ -155,7 +155,7 @@ export default function ChatsPage() {
               <h4 className="font-bold text-[#0F2A22] text-sm mb-1">No Conversation Selected</h4>
               <p className="text-xs max-w-xs text-[#5B6B65]">
                 {conversations.length === 0
-                  ? "When customers submit questions or ask for pharmacist consultations, active tickets will appear in the queue."
+                  ? "When customers submit support questions or inquiries, active tickets will appear in the queue."
                   : "Select an active ticket from the sidebar to view conversation history and reply."}
               </p>
             </div>

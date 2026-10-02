@@ -9,11 +9,11 @@ describe("Layer 4 Auth: Central can() Authorization", () => {
     permissions: [],
   };
 
-  const pharmacist: AdminActor = {
+  const orderClerk: AdminActor = {
     adminUserId: "usr_2",
-    email: "rx@pharmico.health",
-    roleSlug: "PHARMACIST",
-    permissions: ["prescriptions:read", "prescriptions:approve", "inventory:read"],
+    email: "clerk@pharmico.health",
+    roleSlug: "ORDER_CLERK",
+    permissions: ["orders:read", "orders:update", "inventory:read"],
   };
 
   const inventoryManager: AdminActor = {
@@ -29,16 +29,16 @@ describe("Layer 4 Auth: Central can() Authorization", () => {
     expect(can(superAdmin, "any_wildcard_permission")).toBe(true);
   });
 
-  it("allows PHARMACIST to approve prescriptions but denies deleting products", () => {
-    expect(can(pharmacist, "approve", "prescriptions")).toBe(true);
-    expect(can(pharmacist, "read", "inventory")).toBe(true);
-    expect(can(pharmacist, "delete", "products")).toBe(false);
-    expect(can(pharmacist, "settings:update")).toBe(false);
+  it("allows ORDER_CLERK to update orders but denies deleting products or changing settings", () => {
+    expect(can(orderClerk, "update", "orders")).toBe(true);
+    expect(can(orderClerk, "read", "inventory")).toBe(true);
+    expect(can(orderClerk, "delete", "products")).toBe(false);
+    expect(can(orderClerk, "settings:update")).toBe(false);
   });
 
-  it("allows INVENTORY_MANAGER to adjust stock but denies prescription approval", () => {
+  it("allows INVENTORY_MANAGER to adjust stock but denies modifying settings", () => {
     expect(can(inventoryManager, "adjust", "inventory")).toBe(true);
-    expect(can(inventoryManager, "approve", "prescriptions")).toBe(false);
+    expect(can(inventoryManager, "settings:update")).toBe(false);
   });
 
   it("denies access when actor is undefined (unauthenticated)", () => {

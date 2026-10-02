@@ -83,7 +83,7 @@ describe("Database & Storefront Catalog Integration", () => {
     expect(notFound).toBeNull();
   }, 30000);
 
-  it("should query orders and prescriptions without Prisma schema errors", async () => {
+  it("should query orders and items without Prisma schema errors", async () => {
     const orders = await prisma.order.findMany({
       take: 5,
       include: {
@@ -92,10 +92,5 @@ describe("Database & Storefront Catalog Integration", () => {
       },
     });
     expect(Array.isArray(orders)).toBe(true);
-
-    const prescriptions = await prisma.prescription.findMany({
-      take: 5,
-    });
-    expect(Array.isArray(prescriptions)).toBe(true);
   }, 30000);
 });

@@ -26,17 +26,6 @@ export function useStoreEvents() {
       }
     });
 
-    eventSource.addEventListener("prescription.uploaded", (e: any) => {
-      try {
-        const data = JSON.parse(e.data);
-        toast.info("Prescription Uploaded", {
-          description: "New prescription awaiting verification in queue",
-        });
-      } catch (err) {
-        console.error(err);
-      }
-    });
-
     eventSource.addEventListener("stock.low", (e: any) => {
       try {
         const data = JSON.parse(e.data);

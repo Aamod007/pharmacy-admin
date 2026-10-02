@@ -23,7 +23,6 @@ export class DashboardService {
       revenueAggregate,
       totalOrders,
       newCustomers,
-      pendingPrescriptions,
       refundsSum,
       lowStockCount,
       expiringBatchesCount,
@@ -45,10 +44,6 @@ export class DashboardService {
       // New customers
       prisma.user.count({
         where: { createdAt: { gte: thirtyDaysAgo }, role: "CUSTOMER" },
-      }),
-      // Pending prescriptions
-      prisma.prescription.count({
-        where: { status: "PENDING" },
       }),
       // Refunds sum
       prisma.refund.aggregate({
@@ -78,7 +73,6 @@ export class DashboardService {
       aov,
       newCustomers,
       refundsTotal: Number(refundsSum._sum.amount || 0),
-      pendingPrescriptions,
       lowStockCount,
       expiringBatchesCount,
       cachedAt: new Date().toISOString(),

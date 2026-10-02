@@ -56,7 +56,6 @@ export default function CustomersPage() {
                 <th className="py-3 px-6">Customer</th>
                 <th className="py-3 px-4">Contact</th>
                 <th className="py-3 px-4">Orders</th>
-                <th className="py-3 px-4">Prescriptions</th>
                 <th className="py-3 px-4">Registered On</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4">Actions</th>
@@ -71,7 +70,6 @@ export default function CustomersPage() {
                     <p>{c.phone}</p>
                   </td>
                   <td className="py-3 px-4 font-semibold text-xs">{c._count?.orders || 0}</td>
-                  <td className="py-3 px-4 font-semibold text-xs">{c._count?.prescriptions || 0}</td>
                   <td className="py-3 px-4 text-xs text-[#5B6B65]">{formatDateIST(c.createdAt)}</td>
                   <td className="py-3 px-4">
                     <span

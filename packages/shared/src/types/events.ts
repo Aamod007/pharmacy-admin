@@ -37,7 +37,6 @@ export type OrderEventType =
   | "order.created"
   | "payment.captured"
   | "payment.failed"
-  | "prescription.uploaded"
   | "stock.low";
 
 export interface OrderEventPayload {

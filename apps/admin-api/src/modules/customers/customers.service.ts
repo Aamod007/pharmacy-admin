@@ -24,7 +24,7 @@ export class CustomersService {
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
-          _count: { select: { orders: true, prescriptions: true } },
+          _count: { select: { orders: true } },
         },
       }),
       prisma.user.count({ where }),
@@ -39,7 +39,6 @@ export class CustomersService {
       include: {
         addresses: true,
         orders: { take: 10, orderBy: { createdAt: "desc" } },
-        prescriptions: { take: 10, orderBy: { createdAt: "desc" } },
         supportTickets: { take: 5, orderBy: { createdAt: "desc" } },
       },
     });

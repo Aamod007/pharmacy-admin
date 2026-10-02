@@ -22,7 +22,6 @@ import categoriesRoutes from "./modules/categories/categories.routes";
 import brandsRoutes from "./modules/brands/brands.routes";
 import inventoryRoutes from "./modules/inventory/inventory.routes";
 import ordersRoutes from "./modules/orders/orders.routes";
-import prescriptionsRoutes from "./modules/prescriptions/prescriptions.routes";
 import customersRoutes from "./modules/customers/customers.routes";
 import couponsRoutes from "./modules/coupons/coupons.routes";
 import bannersRoutes from "./modules/banners/banners.routes";
@@ -32,7 +31,6 @@ import settingsRoutes from "./modules/settings/settings.routes";
 import staffRoutes from "./modules/staff/staff.routes";
 import auditRoutes from "./modules/audit/audit.routes";
 import labTestsRoutes from "./modules/labTests/labTests.routes";
-import consultationsRoutes from "./modules/consultations/consultations.routes";
 import reviewsRoutes from "./modules/reviews/reviews.routes";
 
 const app = express();
@@ -128,7 +126,6 @@ app.use("/api/v1/categories", categoriesRoutes);
 app.use("/api/v1/brands", brandsRoutes);
 app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1/orders", ordersRoutes);
-app.use("/api/v1/prescriptions", prescriptionsRoutes);
 app.use("/api/v1/customers", customersRoutes);
 app.use("/api/v1/coupons", couponsRoutes);
 app.use("/api/v1/banners", bannersRoutes);
@@ -138,7 +135,6 @@ app.use("/api/v1/settings", settingsRoutes);
 app.use("/api/v1/staff", staffRoutes);
 app.use("/api/v1/audit", auditRoutes);
 app.use("/api/v1/lab-tests", labTestsRoutes);
-app.use("/api/v1/consultations", consultationsRoutes);
 app.use("/api/v1/reviews", reviewsRoutes);
 
 // Centralized error handler

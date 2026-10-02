@@ -11,28 +11,22 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   CANCELLED: [],
 };
 
-function canTransition(current: string, next: string, hasApprovedRx: boolean, isRxRequired: boolean) {
+function canTransition(current: string, next: string) {
   const allowed = ALLOWED_TRANSITIONS[current] || [];
-  if (!allowed.includes(next)) return false;
-  if (next === "CONFIRMED" && isRxRequired && !hasApprovedRx) {
-    return false;
-  }
-  return true;
+  return allowed.includes(next);
 }
 
-describe("Order State Machine & Rx Regulatory Transitions", () => {
-  it("blocks transition to CONFIRMED if required prescription is not approved", () => {
-    const valid = canTransition("PLACED", "CONFIRMED", false, true);
-    expect(valid).toBe(false);
+describe("Order State Machine Validations", () => {
+  it("permits standard forward transition PLACED to CONFIRMED", () => {
+    expect(canTransition("PLACED", "CONFIRMED")).toBe(true);
   });
 
-  it("permits CONFIRMED once prescription is verified and approved", () => {
-    const valid = canTransition("PLACED", "CONFIRMED", true, true);
-    expect(valid).toBe(true);
+  it("permits transitions CONFIRMED to PACKED and PACKED to SHIPPED", () => {
+    expect(canTransition("CONFIRMED", "PACKED")).toBe(true);
+    expect(canTransition("PACKED", "SHIPPED")).toBe(true);
   });
 
   it("blocks invalid backward transitions like SHIPPED to PLACED", () => {
-    const valid = canTransition("SHIPPED", "PLACED", true, false);
-    expect(valid).toBe(false);
+    expect(canTransition("SHIPPED", "PLACED")).toBe(false);
   });
 });

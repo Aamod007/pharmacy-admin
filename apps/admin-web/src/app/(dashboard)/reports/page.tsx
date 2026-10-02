@@ -233,17 +233,8 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        {/* Pharmacy-Specific Metrics */}
-        <div className="grid grid-cols-3 gap-6">
-          <div className="bg-white p-5 rounded-2xl border border-[#E4E7E9] shadow-sm flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-[#5B6B65] uppercase tracking-wider">Pending Prescriptions</p>
-              <h4 className="text-2xl font-black text-[#D97706] mt-1">{stats?.pendingPrescriptions || 0}</h4>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-[#FEF3C7] flex items-center justify-center text-[#D97706]">
-              <BarChart3 className="w-6 h-6" />
-            </div>
-          </div>
+        {/* Inventory Specific Metrics */}
+        <div className="grid grid-cols-2 gap-6">
 
           <div className="bg-white p-5 rounded-2xl border border-[#E4E7E9] shadow-sm flex items-center justify-between">
             <div>

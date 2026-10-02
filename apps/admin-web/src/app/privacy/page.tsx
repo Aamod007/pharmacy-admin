@@ -38,12 +38,11 @@ export default function PrivacyPolicyPage() {
 
           <section className="space-y-6 text-sm leading-relaxed text-slate-700">
             <div>
-              <h3 className="text-base font-semibold text-slate-900">1. Protected Health Information (PHI) Handling</h3>
+              <h3 className="text-base font-semibold text-slate-900">1. Customer Data & Privacy Protection</h3>
               <p className="mt-1">
-                Customer medical records, lab reports, doctor teleconsultation notes, and digital prescriptions are
-                classified as sensitive health data. They are stored in private, encrypted object storage buckets and
-                can only be accessed by authorized clinical pharmacists and medical support agents via short-lived,
-                cryptographically signed URLs.
+                Customer account details, order records, delivery addresses, and payment references are
+                classified as confidential customer data. All communication channels are protected via
+                TLS encryption and access is strictly restricted to authorized administrative personnel.
               </p>
             </div>
 
@@ -68,7 +67,7 @@ export default function PrivacyPolicyPage() {
             <div>
               <h3 className="text-base font-semibold text-slate-900">4. Retention Schedules & Archival</h3>
               <p className="mt-1">
-                In compliance with retail pharmacy regulations, prescription review records and Chemist Register
+                In compliance with retail pharmacy regulations, order fulfillment records and Chemist Register
                 entries are maintained for a mandatory statutory period (min. 2 years). Database write-ahead logs
                 (WAL) and daily encrypted backups are retained for 30 days before automated migration to deep cold
                 storage.

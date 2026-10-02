@@ -15,6 +15,21 @@ const transporter = nodemailer.createTransport({
       : undefined,
 });
 
+const DEFAULT_TEMPLATES: Record<string, { subject: string; html: string }> = {
+  "staff-welcome": {
+    subject: "Welcome to Pharmico Admin Staff",
+    html: "<p>Hello {{name}},</p><p>You have been added as {{role}}. Temporary password: <strong>{{temporaryPassword}}</strong></p>",
+  },
+  "password-reset": {
+    subject: "Reset your Pharmico password",
+    html: "<p>Hello {{name}},</p><p>Your password reset code is: <strong>{{resetToken}}</strong></p>",
+  },
+  "order-status": {
+    subject: "Order {{orderNumber}} Status Updated",
+    html: "<p>Your order {{orderNumber}} is now {{status}}.</p>",
+  },
+};
+
 export async function sendEmailWithTemplate(params: {
   slug: string;
   to: string;
@@ -22,18 +37,9 @@ export async function sendEmailWithTemplate(params: {
 }) {
   const { slug, to, variables } = params;
 
-  const template = await prisma.adminEmailTemplate.findUnique({
-    where: { slug },
-  });
-
-  if (!template || !template.isActive) {
-    console.warn(`Email template ${slug} not found or inactive`);
-    return false;
-  }
-
-  let subject = template.subject;
-  let html = template.htmlContent;
-  let text = template.textContent || "";
+  let subject = DEFAULT_TEMPLATES[slug]?.subject || `Notification: ${slug}`;
+  let html = DEFAULT_TEMPLATES[slug]?.html || `<p>Notification for ${slug}</p>`;
+  let text = "";
 
   for (const [key, value] of Object.entries(variables)) {
     const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");

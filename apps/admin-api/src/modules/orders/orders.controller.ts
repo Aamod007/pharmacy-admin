@@ -10,7 +10,6 @@ export class OrdersController {
       status: req.query.status as any,
       paymentStatus: req.query.paymentStatus as any,
       search: req.query.search as string,
-      hasPrescription: req.query.hasPrescription === "true" ? true : req.query.hasPrescription === "false" ? false : undefined,
       paymentMethod: req.query.paymentMethod,
       startDate: req.query.startDate as string,
       endDate: req.query.endDate as string,

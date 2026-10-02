@@ -28,7 +28,6 @@ export const orderFilterSchema = z.object({
   paymentStatus: z.nativeEnum(PaymentStatus).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  hasPrescription: z.coerce.boolean().optional(),
   paymentMethod: z.enum(["RAZORPAY", "COD"]).optional(),
   pincode: z.string().optional(),
 });

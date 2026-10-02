@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vitest";
 import crypto from "crypto";
 import { can, AdminActor } from "../../apps/admin-api/src/middlewares/rbac";
 import { loginSchema, productCreateSchema, inventoryInwardSchema } from "@pharmacy-admin/shared";
@@ -13,36 +13,36 @@ describe("Appendix B: Pre-launch Checklist Verification Suite", () => {
       permissions: ["*"],
     };
 
-    const pharmacist: AdminActor = {
-      adminUserId: "staff_pharm_1",
-      email: "pharmacist@pharmacy.com",
-      roleSlug: "PHARMACIST",
-      permissions: ["prescriptions:verify", "prescriptions:read", "inventory:read"],
+    const orderClerk: AdminActor = {
+      adminUserId: "staff_clerk_1",
+      email: "clerk@pharmacy.com",
+      roleSlug: "ORDER_CLERK",
+      permissions: ["orders:update", "orders:read", "inventory:read"],
     };
 
     const supportRep: AdminActor = {
       adminUserId: "staff_supp_1",
       email: "support@pharmacy.com",
       roleSlug: "SUPPORT",
-      permissions: ["orders:read", "customers:read", "prescriptions:read"],
+      permissions: ["orders:read", "customers:read"],
     };
 
     it("allows SUPER_ADMIN complete access across all operations", () => {
       expect(can(superAdmin, "settings:update")).toBe(true);
       expect(can(superAdmin, "staff:create")).toBe(true);
-      expect(can(superAdmin, "prescriptions:verify")).toBe(true);
+      expect(can(superAdmin, "orders:update")).toBe(true);
     });
 
-    it("strictly blocks PHARMACIST from accessing financial settings or staff management", () => {
-      expect(can(pharmacist, "prescriptions:verify")).toBe(true);
-      expect(can(pharmacist, "settings:update")).toBe(false);
-      expect(can(pharmacist, "staff:delete")).toBe(false);
-      expect(can(pharmacist, "payments:refund")).toBe(false);
+    it("strictly blocks ORDER_CLERK from accessing financial settings or staff management", () => {
+      expect(can(orderClerk, "orders:update")).toBe(true);
+      expect(can(orderClerk, "settings:update")).toBe(false);
+      expect(can(orderClerk, "staff:delete")).toBe(false);
+      expect(can(orderClerk, "payments:refund")).toBe(false);
     });
 
-    it("strictly blocks SUPPORT from dispensing or verifying prescriptions", () => {
-      expect(can(supportRep, "prescriptions:read")).toBe(true);
-      expect(can(supportRep, "prescriptions:verify")).toBe(false);
+    it("strictly blocks SUPPORT from adjusting inventory or updating orders", () => {
+      expect(can(supportRep, "orders:read")).toBe(true);
+      expect(can(supportRep, "orders:update")).toBe(false);
       expect(can(supportRep, "inventory:adjust")).toBe(false);
     });
 

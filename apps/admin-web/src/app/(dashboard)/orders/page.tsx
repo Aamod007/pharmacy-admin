@@ -83,11 +83,6 @@ export default function OrdersPage() {
                 <tr key={o.id} className="hover:bg-[#F1F3F4] transition">
                   <td className="py-3 px-6 font-bold text-[#0F2A22]">
                     {o.orderNumber}
-                    {o.prescription && (
-                      <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FEF3C7] text-[#D97706]">
-                        <Shield className="w-2.5 h-2.5 mr-0.5" /> Rx
-                      </span>
-                    )}
                   </td>
                   <td className="py-3 px-4">
                     <p className="font-semibold text-[#0F2A22]">{o.user?.name}</p>

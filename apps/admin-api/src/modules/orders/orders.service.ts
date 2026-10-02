@@ -24,7 +24,6 @@ export class OrdersService {
     status?: OrderStatus;
     paymentStatus?: PaymentStatus;
     search?: string;
-    hasPrescription?: boolean;
     paymentMethod?: any;
     startDate?: string;
     endDate?: string;
@@ -37,10 +36,6 @@ export class OrdersService {
     if (params.status) where.status = params.status;
     if (params.paymentStatus) where.paymentStatus = params.paymentStatus;
     if (params.paymentMethod) where.paymentMethod = params.paymentMethod;
-
-    if (params.hasPrescription !== undefined) {
-      where.prescriptionId = params.hasPrescription ? { not: null } : null;
-    }
 
     if (params.startDate || params.endDate) {
       where.createdAt = {};
@@ -65,7 +60,6 @@ export class OrdersService {
         include: {
           user: { select: { id: true, name: true, email: true, phone: true } },
           address: true,
-          prescription: { select: { id: true, status: true, fileUrl: true } },
           _count: { select: { items: true } },
         },
       }),
@@ -89,7 +83,6 @@ export class OrdersService {
       include: {
         user: true,
         address: true,
-        prescription: true,
         coupon: true,
         items: {
           include: {
@@ -126,7 +119,7 @@ export class OrdersService {
     const { updated, restoredProductIds } = await prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { id: orderId },
-        include: { prescription: true, items: true, user: true },
+        include: { items: true, user: true },
       });
 
       if (!order) throw new Error("Order not found");
@@ -137,15 +130,6 @@ export class OrdersService {
         throw new Error(
           `Invalid order status transition from '${order.status}' to '${newStatus}'. Allowed: ${allowedNext.join(", ")}`
         );
-      }
-
-      // Pharmacy Regulatory Guard: Rx check
-      if (newStatus === OrderStatus.CONFIRMED && order.prescriptionId) {
-        if (!order.prescription || order.prescription.status !== "APPROVED") {
-          throw new Error(
-            "Cannot CONFIRM order with prescription required items: Doctor prescription is not yet APPROVED by a pharmacist."
-          );
-        }
       }
 
       // S3 & S8: If moving to CONFIRMED, allocate stock via FEFO if not already allocated

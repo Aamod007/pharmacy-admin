@@ -53,7 +53,7 @@ export default function LoginPage() {
 
       const { user, accessToken } = data.data;
       setAuth(user, accessToken);
-      router.push("/dashboard");
+      window.location.href = "/dashboard";
     } catch (err: any) {
       setErrorMessage(err.message || "An unexpected error occurred during login.");
     } finally {
@@ -82,7 +82,7 @@ export default function LoginPage() {
 
       const { user, accessToken } = data.data;
       setAuth(user, accessToken);
-      router.push("/dashboard");
+      window.location.href = "/dashboard";
     } catch (err: any) {
       setErrorMessage(err.message || "Invalid 2FA verification code.");
     } finally {
