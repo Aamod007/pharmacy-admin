@@ -17,6 +17,14 @@ export async function apiRequest<T = any>(
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
+  if (!token && !endpoint.includes("/auth/")) {
+    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+      useAuthStore.getState().logout();
+      window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+    }
+    throw new Error("Authentication required. Redirecting to login...");
+  }
+
   let res = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
@@ -45,9 +53,15 @@ export async function apiRequest<T = any>(
         }
       } else {
         useAuthStore.getState().logout();
+        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+          window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+        }
       }
     } catch {
       useAuthStore.getState().logout();
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+      }
     }
   }
 

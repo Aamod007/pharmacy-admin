@@ -12,7 +12,7 @@ export function useStoreEvents() {
     if (!token) return;
 
     const eventSource = new EventSource(
-      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api/v1"}/events`
+      `${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/events`
     );
 
     eventSource.addEventListener("order.created", (e: any) => {

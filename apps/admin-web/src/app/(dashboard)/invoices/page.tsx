@@ -34,7 +34,7 @@ export default function InvoicesPage() {
   }, []);
 
   const handleDownloadPdf = (orderId: string) => {
-    window.open(`http://localhost:5001/api/v1/invoices/${orderId}/pdf`, "_blank");
+    window.open(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/invoices/${orderId}/pdf`, "_blank");
   };
 
   return (

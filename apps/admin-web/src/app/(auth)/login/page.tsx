@@ -17,11 +17,13 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api/v1";
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace("/dashboard");
+      const searchParams = new URLSearchParams(window.location.search);
+      const target = searchParams.get("redirect") || "/dashboard";
+      router.replace(target);
     }
   }, [isAuthenticated, router]);
 
@@ -53,7 +55,9 @@ export default function LoginPage() {
 
       const { user, accessToken } = data.data;
       setAuth(user, accessToken);
-      window.location.href = "/dashboard";
+      const searchParams = new URLSearchParams(window.location.search);
+      const target = searchParams.get("redirect") || "/dashboard";
+      window.location.href = target;
     } catch (err: any) {
       setErrorMessage(err.message || "An unexpected error occurred during login.");
     } finally {
