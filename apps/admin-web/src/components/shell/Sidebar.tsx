@@ -76,7 +76,7 @@ export function Sidebar() {
       group: "ADMINISTRATION",
       items: [
         { name: "Customers", href: "/customers", icon: Users },
-        { name: "Staff & RBAC", href: "/staff", icon: Building2 },
+        { name: "Staff Directory", href: "/staff", icon: Building2 },
         { name: "Audit Trail", href: "/audit", icon: ShieldCheck },
         { name: "Store Settings", href: "/settings", icon: Settings },
       ],

@@ -28,7 +28,7 @@ export default function StaffPage() {
 
   return (
     <div className="flex-1 pb-16">
-      <Topbar breadcrumb="Security" title="Staff Members & RBAC Roles" />
+      <Topbar breadcrumb="Administration" title="Staff Directory" />
 
       <div className="p-8 max-w-7xl mx-auto space-y-6">
         <div className="bg-white rounded-2xl border border-[#E4E7E9] shadow-sm overflow-hidden">
@@ -36,7 +36,7 @@ export default function StaffPage() {
             <thead className="bg-[#F5F6F7] border-b text-xs font-bold text-[#5B6B65] uppercase">
               <tr>
                 <th className="py-3 px-6">Staff Member</th>
-                <th className="py-3 px-4">Assigned Role</th>
+                <th className="py-3 px-4">Role</th>
                 <th className="py-3 px-4">2FA Status</th>
                 <th className="py-3 px-4">Account Status</th>
               </tr>
@@ -50,7 +50,7 @@ export default function StaffPage() {
                   </td>
                   <td className="py-3 px-4">
                     <span className="px-3 py-1 bg-[#F1F3F4] rounded-lg text-xs font-bold text-[hsl(var(--primary))]">
-                      {s.role?.name}
+                      {s.role?.name || "Administrator"}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-xs font-semibold">

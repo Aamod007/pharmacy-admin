@@ -41,6 +41,18 @@ describe("Layer 4 Auth: Central can() Authorization", () => {
     expect(can(inventoryManager, "settings:update")).toBe(false);
   });
 
+  it("allows ADMIN to perform any action on any resource", () => {
+    const adminUser: AdminActor = {
+      adminUserId: "usr_admin",
+      email: "admin@pharmico.health",
+      roleSlug: "ADMIN",
+      permissions: ["*"],
+    };
+    expect(can(adminUser, "delete", "products")).toBe(true);
+    expect(can(adminUser, "settings:update")).toBe(true);
+    expect(can(adminUser, "staff:invite")).toBe(true);
+  });
+
   it("denies access when actor is undefined (unauthenticated)", () => {
     expect(can(undefined, "read", "products")).toBe(false);
   });

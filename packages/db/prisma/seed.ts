@@ -8,219 +8,8 @@ import * as bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-const MODULES = [
-  "products",
-  "categories",
-  "brands",
-  "inventory",
-  "orders",
-  "prescriptions",
-  "customers",
-  "coupons",
-  "banners",
-  "lab_tests",
-  "consultations",
-  "payments",
-  "refunds",
-  "invoices",
-  "reviews",
-  "support",
-  "templates",
-  "content",
-  "settings",
-  "staff",
-  "roles",
-  "audit_logs",
-  "reports",
-] as const;
-
-const ACTIONS = ["create", "read", "update", "delete", "export"] as const;
-
 async function main() {
   console.log("🌱 Starting Pharmacy Admin Database Seed...");
-
-  // 1. Seed Permissions
-  console.log("-> Seeding admin permissions...");
-  const permissions: { id: string; slug: string; module: string; action: string }[] = [];
-
-  for (const mod of MODULES) {
-    for (const act of ACTIONS) {
-      const slug = `${mod}:${act}`;
-      const description = `Can ${act} ${mod.replace("_", " ")}`;
-      const perm = await prisma.adminPermission.upsert({
-        where: { slug },
-        update: { description },
-        create: {
-          module: mod,
-          action: act,
-          slug,
-          description,
-        },
-      });
-      permissions.push(perm);
-    }
-  }
-  console.log(`   Created/Updated ${permissions.length} permissions.`);
-
-  // 2. Seed Roles
-  console.log("-> Seeding admin roles...");
-  const rolesData = [
-    {
-      name: "Super Administrator",
-      slug: "SUPER_ADMIN",
-      description: "Full, unrestricted access across all admin modules and system settings.",
-      isSystem: true,
-    },
-    {
-      name: "Administrator",
-      slug: "ADMIN",
-      description: "High-level operational and store management access.",
-      isSystem: true,
-    },
-    {
-      name: "Registered Pharmacist",
-      slug: "PHARMACIST",
-      description: "Prescription verification, medicine approvals, and medical compliance.",
-      isSystem: true,
-    },
-    {
-      name: "Inventory Manager",
-      slug: "INVENTORY_MANAGER",
-      description: "Batch FEFO management, supplier invoices, cataloging, and stock adjustments.",
-      isSystem: true,
-    },
-    {
-      name: "Customer Support",
-      slug: "SUPPORT",
-      description: "Helpdesk ticket resolution, order inquiries, and customer communication.",
-      isSystem: true,
-    },
-    {
-      name: "Marketing Specialist",
-      slug: "MARKETING",
-      description: "Discount coupons, home banners, marketing campaigns, and content updates.",
-      isSystem: true,
-    },
-  ];
-
-  const createdRoles: Record<string, string> = {};
-
-  for (const r of rolesData) {
-    const role = await prisma.adminRole.upsert({
-      where: { slug: r.slug },
-      update: { name: r.name, description: r.description },
-      create: r,
-    });
-    createdRoles[r.slug] = role.id;
-  }
-  console.log(`   Seeded ${Object.keys(createdRoles).length} standard roles.`);
-
-  // 3. Map Permissions to Roles
-  console.log("-> Mapping role permissions...");
-  const allPermSlugs = permissions.map((p) => p.slug);
-
-  const rolePermissionMatrix: Record<string, string[]> = {
-    SUPER_ADMIN: allPermSlugs,
-    ADMIN: allPermSlugs.filter(
-      (slug) => slug !== "staff:delete" && slug !== "roles:delete"
-    ),
-    PHARMACIST: [
-      "prescriptions:create",
-      "prescriptions:read",
-      "prescriptions:update",
-      "prescriptions:export",
-      "orders:read",
-      "orders:update",
-      "products:read",
-      "inventory:read",
-      "customers:read",
-    ],
-    INVENTORY_MANAGER: [
-      "products:create",
-      "products:read",
-      "products:update",
-      "products:delete",
-      "products:export",
-      "categories:create",
-      "categories:read",
-      "categories:update",
-      "categories:delete",
-      "categories:export",
-      "brands:create",
-      "brands:read",
-      "brands:update",
-      "brands:delete",
-      "brands:export",
-      "inventory:create",
-      "inventory:read",
-      "inventory:update",
-      "inventory:delete",
-      "inventory:export",
-      "orders:read",
-      "reports:read",
-      "reports:export",
-    ],
-    SUPPORT: [
-      "customers:read",
-      "customers:update",
-      "customers:export",
-      "orders:read",
-      "orders:update",
-      "orders:export",
-      "support:create",
-      "support:read",
-      "support:update",
-      "support:delete",
-      "support:export",
-      "reviews:read",
-      "reviews:update",
-      "reviews:delete",
-      "prescriptions:read",
-    ],
-    MARKETING: [
-      "coupons:create",
-      "coupons:read",
-      "coupons:update",
-      "coupons:delete",
-      "coupons:export",
-      "banners:create",
-      "banners:read",
-      "banners:update",
-      "banners:delete",
-      "banners:export",
-      "content:create",
-      "content:read",
-      "content:update",
-      "content:delete",
-      "content:export",
-      "templates:create",
-      "templates:read",
-      "templates:update",
-      "templates:export",
-      "reports:read",
-      "reports:export",
-    ],
-  };
-
-  const rolePermissionsToInsert: { roleId: string; permissionId: string }[] = [];
-  for (const [roleSlug, allowedSlugs] of Object.entries(rolePermissionMatrix)) {
-    const roleId = createdRoles[roleSlug];
-    if (!roleId) continue;
-
-    for (const slug of allowedSlugs) {
-      const perm = permissions.find((p) => p.slug === slug);
-      if (!perm) continue;
-      rolePermissionsToInsert.push({ roleId, permissionId: perm.id });
-    }
-  }
-
-  if (rolePermissionsToInsert.length > 0) {
-    await prisma.adminRolePermission.createMany({
-      data: rolePermissionsToInsert,
-      skipDuplicates: true,
-    });
-  }
-  console.log(`   Role permission mappings established (${rolePermissionsToInsert.length} links).`);
 
   // 4. Seed Super Admin User (configured via environment variables)
   console.log("-> Seeding initial Super Admin user...");
@@ -237,7 +26,7 @@ async function main() {
   const superAdmin = await prisma.adminUser.upsert({
     where: { email: adminEmail },
     update: {
-      roleId: createdRoles["SUPER_ADMIN"],
+      role: "ADMIN",
       isActive: true,
       ...(firstName ? { firstName } : {}),
       ...(lastName ? { lastName } : {}),
@@ -251,7 +40,7 @@ async function main() {
       lastName,
       phone,
       avatar,
-      roleId: createdRoles["SUPER_ADMIN"],
+      role: "ADMIN",
       isActive: true,
       isTwoFactorEnabled: false,
     },
@@ -439,36 +228,33 @@ async function main() {
       });
     }
   }
-  // 7. Seed Role Users
-  console.log("-> Seeding standard administrative role users...");
+  // 7. Seed Staff Users
+  console.log("-> Seeding standard administrative staff users...");
   const usersToSeed = [
-    { email: "admin.ops@pharmacy.com", roleSlug: "ADMIN", firstName: "Operations", lastName: "Admin", phone: "+919876543211" },
-    { email: "pharmacist@pharmacy.com", roleSlug: "PHARMACIST", firstName: "Rohan", lastName: "Sharma", phone: "+919876543212" },
-    { email: "inventory@pharmacy.com", roleSlug: "INVENTORY_MANAGER", firstName: "Vikram", lastName: "Patel", phone: "+919876543213" },
-    { email: "support@pharmacy.com", roleSlug: "SUPPORT", firstName: "Ananya", lastName: "Iyer", phone: "+919876543214" },
-    { email: "marketing@pharmacy.com", roleSlug: "MARKETING", firstName: "Pooja", lastName: "Mehta", phone: "+919876543215" },
+    { email: "admin.ops@pharmacy.com", firstName: "Operations", lastName: "Admin", phone: "+919876543211" },
+    { email: "pharmacist@pharmacy.com", firstName: "Rohan", lastName: "Sharma", phone: "+919876543212" },
+    { email: "inventory@pharmacy.com", firstName: "Vikram", lastName: "Patel", phone: "+919876543213" },
+    { email: "support@pharmacy.com", firstName: "Ananya", lastName: "Iyer", phone: "+919876543214" },
+    { email: "marketing@pharmacy.com", firstName: "Pooja", lastName: "Mehta", phone: "+919876543215" },
   ];
 
   for (const u of usersToSeed) {
-    const roleId = createdRoles[u.roleSlug];
-    if (roleId) {
-      await prisma.adminUser.upsert({
-        where: { email: u.email },
-        update: { roleId, isActive: true, firstName: u.firstName, lastName: u.lastName, phone: u.phone },
-        create: {
-          email: u.email,
-          passwordHash,
-          firstName: u.firstName,
-          lastName: u.lastName,
-          phone: u.phone,
-          roleId,
-          isActive: true,
-          isTwoFactorEnabled: false,
-        },
-      });
-    }
+    await prisma.adminUser.upsert({
+      where: { email: u.email },
+      update: { role: "ADMIN", isActive: true, firstName: u.firstName, lastName: u.lastName, phone: u.phone },
+      create: {
+        email: u.email,
+        passwordHash,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        phone: u.phone,
+        role: "ADMIN",
+        isActive: true,
+        isTwoFactorEnabled: false,
+      },
+    });
   }
-  console.log(`   Seeded ${usersToSeed.length} standard role users.`);
+  console.log(`   Seeded ${usersToSeed.length} standard staff users.`);
 
   // 8. Seed Suppliers
   console.log("-> Seeding authentic pharmaceutical suppliers...");

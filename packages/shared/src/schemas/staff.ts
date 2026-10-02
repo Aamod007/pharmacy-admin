@@ -5,14 +5,14 @@ export const staffInviteSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   phone: z.string().min(10).optional(),
-  roleId: z.string().uuid("Select a valid role"),
+  roleId: z.string().optional(),
 });
 
 export const staffUpdateSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   phone: z.string().optional(),
-  roleId: z.string().uuid(),
+  roleId: z.string().optional(),
   isActive: z.boolean(),
 });
 

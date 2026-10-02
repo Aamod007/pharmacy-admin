@@ -265,12 +265,11 @@ This runbook contains 30 non-technical, step-by-step verification scenarios for 
   2. Click **Retry Failed Syncs**.
 - **Expected Result**: Queued retry events are processed; sync audit log updates with success count.
 
-### Scenario 30: Staff Management & Permissions Audit
-- **Persona / Role**: Super Admin (`admin@pharmacy.com`)
-- **Objective**: Invite new pharmacy staff member and assign specific RBAC role.
+### Scenario 30: Staff Management & Directory Audit
+- **Persona / Role**: Administrator (`admin@pharmacy.com`)
+- **Objective**: Invite new pharmacy staff member and inspect staff directory.
 - **Steps**:
-  1. Navigate to **Staff & RBAC** (`/staff`).
+  1. Navigate to **Staff Directory** (`/staff`).
   2. Click **Invite Staff Member**.
-  3. Enter Name ("Priya Sharma"), Email ("priya@pharmico.health"), and assign Role: "INVENTORY_MANAGER".
-  4. Submit.
-- **Expected Result**: Staff member is created; welcome email/token is generated; user appears in the active staff directory with appropriate permission scope.
+  3. Enter Name ("Priya Sharma"), Email ("priya@pharmico.health"), and submit.
+- **Expected Result**: Staff member is created; welcome email/token is generated; user appears in the active staff directory with Administrator operational access.

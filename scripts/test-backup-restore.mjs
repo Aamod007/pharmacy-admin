@@ -8,20 +8,20 @@ import prisma from "@pharmacy-admin/db";
 async function verifyDatabaseIntegrity() {
   console.log("🔍 [1/3] Checking database connectivity and tables...");
   
-  const [adminCount, roleCount, orderCount, productCount] = await Promise.all([
+  const [adminCount, orderCount, productCount, batchCount] = await Promise.all([
     prisma.adminUser.count(),
-    prisma.adminRole.count(),
     prisma.order.count(),
     prisma.product.count(),
+    prisma.inventoryBatch.count(),
   ]);
 
   console.log(`📊 Current Active Table Counts:`);
   console.log(`   - Admin Users: ${adminCount}`);
-  console.log(`   - Admin Roles: ${roleCount}`);
+  console.log(`   - Inventory Batches: ${batchCount}`);
   console.log(`   - Store Orders: ${orderCount}`);
   console.log(`   - Store Products: ${productCount}`);
 
-  if (roleCount === 0 || adminCount === 0) {
+  if (adminCount === 0) {
     throw new Error("Integrity check failed: Core administrative tables are empty!");
   }
 

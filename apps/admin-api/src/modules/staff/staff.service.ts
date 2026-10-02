@@ -6,24 +6,32 @@ import { sendEmailWithTemplate } from "../../lib/mailer";
 
 export class StaffService {
   async listStaff() {
-    return prisma.adminUser.findMany({
+    const staff = await prisma.adminUser.findMany({
       where: { deletedAt: null },
-      include: { role: true },
       orderBy: { createdAt: "desc" },
     });
+    return staff.map((s) => ({
+      ...s,
+      role: { id: "admin", name: "Administrator", slug: "ADMIN" },
+    }));
   }
 
   async listRoles() {
-    return prisma.adminRole.findMany({
-      include: {
-        permissions: { include: { permission: true } },
-        _count: { select: { users: true } },
+    return [
+      {
+        id: "admin",
+        name: "Administrator",
+        slug: "ADMIN",
+        description: "Full administrative access across all store management tools.",
+        isSystem: true,
+        permissions: [],
+        _count: { users: 1 },
       },
-    });
+    ];
   }
 
   async listPermissions() {
-    return prisma.adminPermission.findMany({ orderBy: [{ module: "asc" }, { action: "asc" }] });
+    return [];
   }
 
   async inviteStaff(input: StaffInviteInput) {
@@ -40,10 +48,9 @@ export class StaffService {
         firstName: input.firstName,
         lastName: input.lastName,
         phone: input.phone,
-        roleId: input.roleId,
+        role: "ADMIN",
         passwordHash,
       },
-      include: { role: true },
     });
 
     sendEmailWithTemplate({
@@ -51,13 +58,13 @@ export class StaffService {
       to: user.email,
       variables: {
         name: user.firstName,
-        roleName: user.role.name,
+        roleName: "Administrator",
         temporaryPassword: tempPassword,
-        inviteLink: "http://localhost:3001/login",
+        inviteLink: "http://localhost:3002/login",
       },
     });
 
-    return { user, tempPassword };
+    return { user: { ...user, role: { id: "admin", name: "Administrator", slug: "ADMIN" } }, tempPassword };
   }
 }
 

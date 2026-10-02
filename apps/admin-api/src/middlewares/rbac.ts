@@ -9,7 +9,7 @@ export interface AdminActor {
 
 export function can(actor: AdminActor | undefined, action: string, resource?: string): boolean {
   if (!actor) return false;
-  if (actor.roleSlug === "SUPER_ADMIN" || actor.permissions?.includes("*")) return true;
+  if (actor.roleSlug === "SUPER_ADMIN" || actor.roleSlug === "ADMIN" || actor.permissions?.includes("*")) return true;
 
   const targetPermission = resource ? `${resource}:${action}` : action;
   return (
@@ -54,7 +54,7 @@ export function requireRole(roleSlug: string) {
       });
     }
 
-    if (req.admin.roleSlug === "SUPER_ADMIN" || req.admin.roleSlug === roleSlug) {
+    if (req.admin.roleSlug === "SUPER_ADMIN" || req.admin.roleSlug === "ADMIN" || req.admin.roleSlug === roleSlug) {
       return next();
     }
 

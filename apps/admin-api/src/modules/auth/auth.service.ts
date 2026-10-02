@@ -12,13 +12,6 @@ export class AuthService {
   async login(input: LoginInput, meta: { ipAddress?: string; userAgent?: string }) {
     const user = await prisma.adminUser.findUnique({
       where: { email: input.email },
-      include: {
-        role: {
-          include: {
-            permissions: { include: { permission: true } },
-          },
-        },
-      },
     });
 
     if (!user || user.deletedAt) {
@@ -77,13 +70,6 @@ export class AuthService {
 
     const user = await prisma.adminUser.findUnique({
       where: { id: decoded.adminUserId },
-      include: {
-        role: {
-          include: {
-            permissions: { include: { permission: true } },
-          },
-        },
-      },
     });
 
     if (!user || !user.twoFactorSecret) {
@@ -103,14 +89,15 @@ export class AuthService {
   }
 
   async createAdminSession(user: any, meta: { ipAddress?: string; userAgent?: string }) {
-    const permissions = user.role.permissions.map((rp: any) => rp.permission.slug);
+    const permissions = ["*"];
+    const roleSlug = user.role || "ADMIN";
 
     const accessToken = jwt.sign(
       {
         adminUserId: user.id,
         email: user.email,
-        roleId: user.roleId,
-        roleSlug: user.role.slug,
+        roleId: "admin",
+        roleSlug,
         permissions,
       },
       env.JWT_ACCESS_SECRET,
@@ -141,9 +128,9 @@ export class AuthService {
         lastName: user.lastName,
         avatar: user.avatar,
         role: {
-          id: user.role.id,
-          name: user.role.name,
-          slug: user.role.slug,
+          id: "admin",
+          name: "Administrator",
+          slug: roleSlug,
         },
         permissions,
       },
@@ -156,15 +143,7 @@ export class AuthService {
     const session = await prisma.adminSession.findUnique({
       where: { tokenHash },
       include: {
-        adminUser: {
-          include: {
-            role: {
-              include: {
-                permissions: { include: { permission: true } },
-              },
-            },
-          },
-        },
+        adminUser: true,
       },
     });
 
