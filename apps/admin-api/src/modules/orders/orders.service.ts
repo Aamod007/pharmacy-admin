@@ -51,6 +51,14 @@ export class OrdersService {
       ];
     }
 
+    // Ensure only genuine customer orders appear in the admin panel
+    where.NOT = [
+      { orderNumber: { startsWith: "ORD-" } },
+      { orderNumber: { contains: "TEST" } },
+      { orderNumber: { contains: "RACE" } },
+      { orderNumber: { contains: "SYNC" } },
+    ];
+
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
         where,

@@ -871,4 +871,26 @@ describe("Phase 2: Inventory Core & Statutory Invariants (S1 - S12, I1 - I6)", (
       expect(Object.keys(valuation.categoryBreakdown).length).toBeGreaterThan(0);
     });
   });
+
+  afterAll(async () => {
+    // Delete any test orders created by this test file so the database stays completely clean
+    const testOrders = await prisma.order.findMany({
+      where: {
+        OR: [
+          { orderNumber: { startsWith: "ORD-" } },
+          { orderNumber: { contains: "TEST" } },
+          { orderNumber: { contains: "RACE" } },
+          { orderNumber: { contains: "SYNC" } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (testOrders.length > 0) {
+      const ids = testOrders.map((o) => o.id);
+      await prisma.orderItem.deleteMany({ where: { orderId: { in: ids } } });
+      await prisma.orderStatusHistory.deleteMany({ where: { orderId: { in: ids } } });
+      await prisma.payment.deleteMany({ where: { orderId: { in: ids } } });
+      await prisma.order.deleteMany({ where: { id: { in: ids } } });
+    }
+  });
 });
