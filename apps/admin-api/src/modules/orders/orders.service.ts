@@ -133,6 +133,11 @@ export class OrdersService {
 
       if (!order) throw new Error("Order not found");
 
+      // Idempotency: If already in requested status, return early without re-processing
+      if (order.status === newStatus) {
+        return { updated: order, restoredProductIds: [] };
+      }
+
       // Validate State Machine Transition
       const allowedNext = ALLOWED_TRANSITIONS[order.status as OrderStatus] || [];
       if (!allowedNext.includes(newStatus)) {
