@@ -17,53 +17,11 @@ export async function apiRequest<T = any>(
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
-  if (!token && !endpoint.includes("/auth/")) {
-    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-      useAuthStore.getState().logout();
-      window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
-    }
-    throw new Error("Authentication required. Redirecting to login...");
-  }
-
   let res = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
     credentials: "include",
   });
-
-  // Attempt token refresh on 401
-  if (res.status === 401 && !endpoint.includes("/auth/")) {
-    try {
-      const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (refreshRes.ok) {
-        const refreshData = await refreshRes.json();
-        const newToken = refreshData.data?.accessToken;
-        if (newToken) {
-          localStorage.setItem("admin_token", newToken);
-          (headers as Record<string, string>)["Authorization"] = `Bearer ${newToken}`;
-          res = await fetch(`${API_BASE}${endpoint}`, {
-            ...options,
-            headers,
-            credentials: "include",
-          });
-        }
-      } else {
-        useAuthStore.getState().logout();
-        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-          window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
-        }
-      }
-    } catch {
-      useAuthStore.getState().logout();
-      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
-      }
-    }
-  }
 
   const json = await res.json();
   if (!res.ok) {

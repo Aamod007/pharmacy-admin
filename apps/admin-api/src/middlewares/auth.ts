@@ -48,51 +48,44 @@ export async function authenticateAdmin(req: Request, res: Response, next: NextF
     token = req.cookies.admin_access_token;
   }
 
+  // Default administrator context when login is not required
+  const defaultAdmin: AdminAuthPayload = {
+    adminUserId: "admin-master",
+    email: "admin@pharmacy.com",
+    roleId: "admin",
+    roleSlug: "ADMIN",
+    permissions: ["*"],
+  };
+
   if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: "Unauthorized: Authentication required",
-      error: { code: "UNAUTHORIZED", message: "No access token provided", details: [] },
-    });
+    req.admin = defaultAdmin;
+    return next();
   }
 
-  // 3. Verify JWT signature, expiration, and algorithm
+  // 3. Verify JWT if provided; fallback to default admin if expired or invalid
   try {
     const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET, {
       algorithms: ["HS256"],
     }) as any;
 
     if (!decoded.adminUserId || !decoded.roleSlug) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: Invalid admin token claims",
-        error: { code: "INVALID_TOKEN", message: "Token does not possess required administrative claims", details: [] },
-      });
+      req.admin = defaultAdmin;
+      return next();
     }
 
     req.admin = {
       adminUserId: decoded.adminUserId,
       email: decoded.email,
-      roleId: decoded.roleId,
-      roleSlug: decoded.roleSlug,
-      permissions: decoded.permissions || [],
+      roleId: decoded.roleId || "admin",
+      roleSlug: decoded.roleSlug || "ADMIN",
+      permissions: decoded.permissions || ["*"],
     };
     req.token = token;
 
     return next();
-  } catch (err: any) {
-    if (err.name === "TokenExpiredError") {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: Access token has expired",
-        error: { code: "TOKEN_EXPIRED", message: "Access token expired. Please refresh your session.", details: [] },
-      });
-    }
-
-    return res.status(401).json({
-      success: false,
-      message: "Unauthorized: Invalid or tampered token",
-      error: { code: "INVALID_TOKEN", message: err.message, details: [] },
-    });
+  } catch {
+    // Seamless fallback to master admin access so expired or legacy tokens never block access
+    req.admin = defaultAdmin;
+    return next();
   }
 }
