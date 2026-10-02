@@ -114,7 +114,7 @@ export default function ReviewsPage() {
                   </h4>
 
                   <p className="text-xs text-[#0F2A22] font-medium italic">
-                    "{r.comment}"
+                    &ldquo;{r.comment}&rdquo;
                   </p>
                 </div>
 

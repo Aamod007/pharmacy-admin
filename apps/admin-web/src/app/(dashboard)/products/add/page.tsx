@@ -1046,7 +1046,7 @@ export default function AddProductPage() {
           <div className="col-span-4 sticky top-24 space-y-6">
             <div className="bg-white rounded-2xl p-6 border border-[#E4E7E9] shadow-sm space-y-5">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-[#0F2A22]">Medicine Media</h3>
+                <h3 className="text-base font-bold text-[#0F2A22]">Product Media</h3>
                 <span className="text-xs text-[#5B6B65]">Primary</span>
               </div>
 

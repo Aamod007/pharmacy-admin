@@ -211,7 +211,7 @@ export default function ConsultationsPage() {
 
                       {a.prescriptionNotes && (
                         <p className="text-[11px] text-[#0B4A3A] bg-[#DCFCE7]/40 p-2 rounded-xl border border-[#10B981]/30">
-                          <strong>Doctor's Rx Notes:</strong> {a.prescriptionNotes}
+                          <strong>Doctor&apos;s Rx Notes:</strong> {a.prescriptionNotes}
                         </p>
                       )}
                     </div>

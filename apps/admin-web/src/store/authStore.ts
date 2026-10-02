@@ -15,37 +15,55 @@ export interface AdminUser {
 }
 
 interface AuthState {
-  user: AdminUser;
-  accessToken: string;
+  user: AdminUser | null;
+  accessToken: string | null;
   isAuthenticated: boolean;
   setAuth: (user: AdminUser, token: string) => void;
   logout: () => void;
   hasPermission: (permissionSlug: string) => boolean;
 }
 
-const defaultAdmin: AdminUser = {
-  id: "admin-super",
-  email: "admin@pharmacy.com",
-  firstName: "Super",
-  lastName: "Admin",
-  role: {
-    id: "role-super",
-    name: "Super Admin",
-    slug: "SUPER_ADMIN",
-  },
-  permissions: ["*"],
+const getInitialState = () => {
+  if (typeof window === "undefined") {
+    return { user: null, accessToken: null, isAuthenticated: false };
+  }
+  const token = localStorage.getItem("admin_token");
+  const storedUser = localStorage.getItem("admin_user");
+  if (token && storedUser) {
+    try {
+      const parsedUser = JSON.parse(storedUser);
+      return { user: parsedUser, accessToken: token, isAuthenticated: true };
+    } catch {
+      // ignore
+    }
+  }
+  return { user: null, accessToken: null, isAuthenticated: false };
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: defaultAdmin,
-  accessToken: "bypass-token",
-  isAuthenticated: true,
+  ...getInitialState(),
+
   setAuth: (user, token) => {
-    set({ user: user || defaultAdmin, accessToken: token || "bypass-token", isAuthenticated: true });
+    if (typeof window !== "undefined") {
+      localStorage.setItem("admin_token", token);
+      localStorage.setItem("admin_user", JSON.stringify(user));
+    }
+    set({ user, accessToken: token, isAuthenticated: true });
   },
+
   logout: () => {
-    // Keep authenticated even on logout
-    set({ user: defaultAdmin, accessToken: "bypass-token", isAuthenticated: true });
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("admin_token");
+      localStorage.removeItem("admin_user");
+    }
+    set({ user: null, accessToken: null, isAuthenticated: false });
   },
-  hasPermission: () => true,
+
+  hasPermission: (permissionSlug: string) => {
+    const { user } = get();
+    if (!user) return false;
+    if (user.role?.slug === "SUPER_ADMIN") return true;
+    if (user.permissions?.includes("*")) return true;
+    return user.permissions?.includes(permissionSlug) ?? false;
+  },
 }));

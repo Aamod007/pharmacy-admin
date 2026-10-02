@@ -4,7 +4,7 @@ export const categoryCreateSchema = z.object({
   name: z.string().min(2, "Category name must be at least 2 characters"),
   slug: z.string().min(2).regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens"),
   description: z.string().optional(),
-  image: z.string().url("Must be a valid image URL").optional().nullable(),
+  image: z.string().optional().nullable(),
   icon: z.string().optional().nullable(),
   isActive: z.boolean().default(true),
   sortOrder: z.number().int().default(0),

@@ -202,6 +202,7 @@ async function main() {
     ],
   };
 
+  const rolePermissionsToInsert: { roleId: string; permissionId: string }[] = [];
   for (const [roleSlug, allowedSlugs] of Object.entries(rolePermissionMatrix)) {
     const roleId = createdRoles[roleSlug];
     if (!roleId) continue;
@@ -209,23 +210,17 @@ async function main() {
     for (const slug of allowedSlugs) {
       const perm = permissions.find((p) => p.slug === slug);
       if (!perm) continue;
-
-      await prisma.adminRolePermission.upsert({
-        where: {
-          roleId_permissionId: {
-            roleId,
-            permissionId: perm.id,
-          },
-        },
-        update: {},
-        create: {
-          roleId,
-          permissionId: perm.id,
-        },
-      });
+      rolePermissionsToInsert.push({ roleId, permissionId: perm.id });
     }
   }
-  console.log("   Role permission mappings established.");
+
+  if (rolePermissionsToInsert.length > 0) {
+    await prisma.adminRolePermission.createMany({
+      data: rolePermissionsToInsert,
+      skipDuplicates: true,
+    });
+  }
+  console.log(`   Role permission mappings established (${rolePermissionsToInsert.length} links).`);
 
   // 4. Seed Super Admin User (configured via environment variables)
   console.log("-> Seeding initial Super Admin user...");
@@ -444,7 +439,135 @@ async function main() {
       });
     }
   }
-  console.log(`   Seeded ${medicineCategories.length} authentic medicine inventory categories.`);
+  // 7. Seed Role Users
+  console.log("-> Seeding standard administrative role users...");
+  const usersToSeed = [
+    { email: "admin.ops@pharmacy.com", roleSlug: "ADMIN", firstName: "Operations", lastName: "Admin", phone: "+919876543211" },
+    { email: "pharmacist@pharmacy.com", roleSlug: "PHARMACIST", firstName: "Rohan", lastName: "Sharma", phone: "+919876543212" },
+    { email: "inventory@pharmacy.com", roleSlug: "INVENTORY_MANAGER", firstName: "Vikram", lastName: "Patel", phone: "+919876543213" },
+    { email: "support@pharmacy.com", roleSlug: "SUPPORT", firstName: "Ananya", lastName: "Iyer", phone: "+919876543214" },
+    { email: "marketing@pharmacy.com", roleSlug: "MARKETING", firstName: "Pooja", lastName: "Mehta", phone: "+919876543215" },
+  ];
+
+  for (const u of usersToSeed) {
+    const roleId = createdRoles[u.roleSlug];
+    if (roleId) {
+      await prisma.adminUser.upsert({
+        where: { email: u.email },
+        update: { roleId, isActive: true, firstName: u.firstName, lastName: u.lastName, phone: u.phone },
+        create: {
+          email: u.email,
+          passwordHash,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          phone: u.phone,
+          roleId,
+          isActive: true,
+          isTwoFactorEnabled: false,
+        },
+      });
+    }
+  }
+  console.log(`   Seeded ${usersToSeed.length} standard role users.`);
+
+  // 8. Seed Suppliers
+  console.log("-> Seeding authentic pharmaceutical suppliers...");
+  const suppliersToSeed = [
+    { name: "Apollo Pharmacy Supply Ltd", code: "SUP-APOLLO", contactPerson: "Rajesh Gupta", email: "rajesh@apollosupply.com", phone: "+919811002233", gstin: "27AAACA1234A1Z5", drugLicenceNo: "MH-WZ-102934", creditDays: 30 },
+    { name: "Cipla Distribution Network", code: "SUP-CIPLA", contactPerson: "Suresh Nambiar", email: "orders@cipladist.com", phone: "+919822003344", gstin: "27AAACC5678B1Z2", drugLicenceNo: "MH-WZ-203948", creditDays: 45 },
+    { name: "Sun Pharma Healthcare Logistics", code: "SUP-SUNPHARMA", contactPerson: "Deepak Verma", email: "logistics@sunpharma.com", phone: "+919833004455", gstin: "27AAACS9012C1Z9", drugLicenceNo: "MH-WZ-304958", creditDays: 30 },
+    { name: "Lupin Bulk Logistics", code: "SUP-LUPIN", contactPerson: "Amit Deshmukh", email: "amit@lupinlogistics.com", phone: "+919844005566", gstin: "27AAACL3456D1Z6", drugLicenceNo: "MH-WZ-405968", creditDays: 60 },
+    { name: "Mankind National Pharma Distributors", code: "SUP-MANKIND", contactPerson: "Vikas Kapoor", email: "orders@mankindpharma.com", phone: "+919855006677", gstin: "27AAACM7890E1Z3", drugLicenceNo: "MH-WZ-506978", creditDays: 30 },
+  ];
+
+  for (const s of suppliersToSeed) {
+    await prisma.adminSupplier.upsert({
+      where: { code: s.code },
+      update: s,
+      create: s,
+    });
+  }
+  console.log(`   Seeded ${suppliersToSeed.length} pharmaceutical suppliers.`);
+
+  // 9. Seed Inventory Testing Scenarios
+  console.log("-> Seeding inventory batch testing scenarios...");
+  const prods = await prisma.product.findMany({
+    include: { variants: { include: { batches: true } } },
+    take: 10,
+  });
+  const now = new Date();
+  const addDays = (d: Date, days: number) => new Date(d.getTime() + days * 24 * 60 * 60 * 1000);
+
+  if (prods.length >= 8) {
+    // FEFO multi-batch + Rx
+    const p0 = prods[0];
+    await prisma.product.update({
+      where: { id: p0.id },
+      data: { prescriptionRequired: true, name: "Amoxicillin & Potassium Clavulanate 625mg (Augmentin)" },
+    });
+    const v0 = p0.variants[0];
+    if (v0) {
+      await prisma.inventoryBatch.deleteMany({ where: { variantId: v0.id } });
+      await prisma.inventoryBatch.createMany({
+        data: [
+          { variantId: v0.id, batchNumber: "AUG-2026-B1", mfgDate: addDays(now, -60), expiryDate: addDays(now, 90), quantity: 20, costPrice: 150.00 },
+          { variantId: v0.id, batchNumber: "AUG-2026-B2", mfgDate: addDays(now, -30), expiryDate: addDays(now, 180), quantity: 35, costPrice: 155.00 },
+          { variantId: v0.id, batchNumber: "AUG-2026-B3", mfgDate: addDays(now, -10), expiryDate: addDays(now, 365), quantity: 50, costPrice: 160.00 },
+        ],
+      });
+    }
+
+    // Expiring in 10 days
+    const v1 = prods[1]?.variants[0];
+    if (v1) {
+      await prisma.inventoryBatch.create({
+        data: { variantId: v1.id, batchNumber: `EXP10-${Date.now().toString().slice(-4)}`, mfgDate: addDays(now, -180), expiryDate: addDays(now, 10), quantity: 25, costPrice: 85.00 },
+      });
+    }
+
+    // Expiring in 45 days
+    const v2 = prods[2]?.variants[0];
+    if (v2) {
+      await prisma.inventoryBatch.create({
+        data: { variantId: v2.id, batchNumber: `EXP45-${Date.now().toString().slice(-4)}`, mfgDate: addDays(now, -180), expiryDate: addDays(now, 45), quantity: 40, costPrice: 95.00 },
+      });
+    }
+
+    // Expiring in 80 days
+    const v3 = prods[3]?.variants[0];
+    if (v3) {
+      await prisma.inventoryBatch.create({
+        data: { variantId: v3.id, batchNumber: `EXP80-${Date.now().toString().slice(-4)}`, mfgDate: addDays(now, -180), expiryDate: addDays(now, 80), quantity: 30, costPrice: 110.00 },
+      });
+    }
+
+    // Zero stock
+    for (const v of prods[4]?.variants || []) {
+      await prisma.inventoryBatch.updateMany({ where: { variantId: v.id }, data: { quantity: 0 } });
+    }
+
+    // Low stock
+    const v5 = prods[5]?.variants[0];
+    if (v5) {
+      await prisma.inventoryBatch.deleteMany({ where: { variantId: v5.id } });
+      await prisma.inventoryBatch.create({
+        data: { variantId: v5.id, batchNumber: `LOWSTK-${Date.now().toString().slice(-4)}`, mfgDate: addDays(now, -90), expiryDate: addDays(now, 300), quantity: 3, costPrice: 45.00 },
+      });
+    }
+
+    // 0 Batches
+    for (const v of prods[6]?.variants || []) {
+      await prisma.inventoryBatch.deleteMany({ where: { variantId: v.id } });
+    }
+
+    // Expired batch
+    const v7 = prods[7]?.variants[0];
+    if (v7) {
+      await prisma.inventoryBatch.create({
+        data: { variantId: v7.id, batchNumber: `EXPIRED-${Date.now().toString().slice(-4)}`, mfgDate: addDays(now, -400), expiryDate: addDays(now, -15), quantity: 50, costPrice: 60.00 },
+      });
+    }
+  }
 
   console.log("✅ Seed completed successfully!");
 }
