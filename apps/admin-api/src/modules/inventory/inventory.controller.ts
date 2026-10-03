@@ -18,6 +18,8 @@ export class InventoryController {
       stockStatus: req.query.stockStatus as string,
       isBlocked: req.query.isBlocked === "true" ? true : req.query.isBlocked === "false" ? false : undefined,
       search: req.query.search as string,
+      sortBy: req.query.sortBy as string,
+      sortOrder: (req.query.sortOrder as "asc" | "desc") || "asc",
     });
     return res.json({ success: true, ...result });
   }

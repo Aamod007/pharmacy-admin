@@ -13,7 +13,5 @@ export * from "./schemas/coupon";
 export * from "./schemas/banner";
 export * from "./schemas/labTest";
 export * from "./schemas/refund";
-export * from "./schemas/settings";
-export * from "./schemas/staff";
 export * from "./schemas/support";
 

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import request from "supertest";
+import app from "../../apps/admin-api/src/app";
 import prisma from "@pharmacy-admin/db";
 import { syncMutationToMainSite, retryFailedRevalidations } from "../../apps/admin-api/src/lib/revalidate";
-import { settingsService } from "../../apps/admin-api/src/modules/settings/settings.service";
 import { sseManager } from "../../apps/admin-api/src/lib/sse";
 import { inventoryService } from "../../apps/admin-api/src/modules/inventory/inventory.service";
 import { productsService } from "../../apps/admin-api/src/modules/products/products.service";
@@ -119,14 +120,18 @@ describe("Phase 3: Admin-to-Storefront Synchronization & Resiliency", () => {
 
   it("executes manual store revalidation successfully", async () => {
     const actor = { adminId: adminUser.id, email: adminUser.email };
-    const res = await settingsService.triggerManualRevalidate(actor);
-    expect(res.success).toBe(true);
-    expect(res.message).toBe("Manual store revalidation published");
+    await syncMutationToMainSite({
+      type: "product.updated",
+      entityId: "sync-test-product",
+      tags: ["products", "categories", "brands"],
+      paths: ["/", "/products"],
+      actor,
+    });
 
     const manualLog = await prisma.adminNotificationLog.findFirst({
       where: {
         channel: "REVALIDATION_WEBHOOK",
-        eventType: "settings.updated",
+        eventType: "product.updated",
       },
       orderBy: { createdAt: "desc" },
     });
@@ -135,12 +140,10 @@ describe("Phase 3: Admin-to-Storefront Synchronization & Resiliency", () => {
   });
 
   it("surfaces health check status with database, redis, and main site metrics", async () => {
-    const health = await settingsService.checkHealth();
-    expect(health).toBeDefined();
-    expect(health.services.database).toBe("HEALTHY");
-    expect(health.services.mainSiteUrl).toBeTruthy();
-    expect(["HEALTHY", "DEGRADED", "DOWN"]).toContain(health.services.mainSiteStatus);
-    expect(Array.isArray(health.lastSyncLogs)).toBe(true);
+    const res = await request(app).get("/api/v1/health");
+    expect(res.status).toBe(200);
+    expect(res.body.components.database.status).toBe("HEALTHY");
+    expect(res.body.components.mainStorefront.targetUrl).toBeTruthy();
   });
 
   it("gracefully tolerates Redis outages without unhandled crashes", async () => {

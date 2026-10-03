@@ -7,7 +7,7 @@ import { Stepper } from "../../../../components/common/Stepper";
 import { SectionCard } from "../../../../components/common/SectionCard";
 import { TagMultiSelect } from "../../../../components/common/TagMultiSelect";
 import { apiRequest } from "../../../../lib/api-client";
-import { formatCurrency } from "../../../../lib/utils";
+import { formatCurrency, formatExpiryMonthYear, formatExpirySlash, getExpiryMonthYearStatus } from "../../../../lib/utils";
 import { toast } from "sonner";
 import {
   Plus,
@@ -915,13 +915,25 @@ export default function AddProductPage() {
                         />
                       </div>
                       <div>
-                        <span className="text-[11px] text-[#5B6B65] font-semibold">Expiry Date</span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-[#5B6B65] font-semibold">Expiry Date</span>
+                          {expiryDate && (
+                            <span className="text-[10px] font-bold text-[#0B4A3A]">
+                              {formatExpiryMonthYear(expiryDate)} ({formatExpirySlash(expiryDate)})
+                            </span>
+                          )}
+                        </div>
                         <input
                           type="date"
                           value={expiryDate}
                           onChange={(e) => setExpiryDate(e.target.value)}
                           className="w-full px-2 py-1.5 bg-white rounded-lg text-xs font-bold mt-1 border border-[#E4E7E9]"
                         />
+                        {expiryDate && (
+                          <p className="text-[10px] text-[#5B6B65] mt-1 font-semibold">
+                            Shelf life: {getExpiryMonthYearStatus(expiryDate).label}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <span className="text-[11px] text-[#5B6B65] font-semibold">Initial Quantity</span>
@@ -983,7 +995,21 @@ export default function AddProductPage() {
                       </div>
                       <div>
                         <span className="text-[#5B6B65] block">Batch Expiry</span>
-                        <span className="font-bold text-[#16A34A]">{expiryDate || "N/A"}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="font-bold text-[#0F2A22]">
+                            {expiryDate ? formatExpiryMonthYear(expiryDate) : "N/A"}
+                          </span>
+                          {expiryDate && (
+                            <span className="font-mono text-[10px] text-[#5B6B65] bg-white px-1.5 py-0.2 rounded border border-[#E4E7E9]">
+                              {formatExpirySlash(expiryDate)}
+                            </span>
+                          )}
+                        </div>
+                        {expiryDate && (
+                          <span className={`inline-block px-1.5 py-0.5 mt-1 rounded text-[10px] font-bold border ${getExpiryMonthYearStatus(expiryDate).color}`}>
+                            {getExpiryMonthYearStatus(expiryDate).label}
+                          </span>
+                        )}
                       </div>
                       <div>
                         <span className="text-[#5B6B65] block">Prescription Req.</span>

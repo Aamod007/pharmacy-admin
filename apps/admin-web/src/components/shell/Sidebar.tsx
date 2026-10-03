@@ -11,13 +11,10 @@ import {
   Users,
   FileText,
   Tag,
-  Settings,
   LogOut,
   ChevronDown,
   ChevronRight,
   Star,
-  ShieldCheck,
-  Building2,
 } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 
@@ -76,9 +73,6 @@ export function Sidebar() {
       group: "ADMINISTRATION",
       items: [
         { name: "Customers", href: "/customers", icon: Users },
-        { name: "Staff Directory", href: "/staff", icon: Building2 },
-        { name: "Audit Trail", href: "/audit", icon: ShieldCheck },
-        { name: "Store Settings", href: "/settings", icon: Settings },
       ],
     },
   ];

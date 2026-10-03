@@ -10,6 +10,23 @@ import { resolveAdminUserId } from "../../lib/admin-user";
 
 const TX_OPTIONS = { maxWait: 15000, timeout: 60000 };
 
+interface InventorySummaryMetrics {
+  totalBatches: number;
+  totalUnits: number;
+  expiring30Count: number;
+  expiring60Count: number;
+  expiring90Count: number;
+  expiredCount: number;
+  lowStockCount: number;
+}
+
+let cachedInventorySummary: { data: InventorySummaryMetrics; expiresAt: number } | null = null;
+const SUMMARY_CACHE_TTL = 15000;
+
+export function invalidateInventoryCache() {
+  cachedInventorySummary = null;
+}
+
 export class InventoryService {
   /**
    * List batches with FEFO ordering, search, filtering, and summary metrics
@@ -22,6 +39,8 @@ export class InventoryService {
     stockStatus?: string;
     isBlocked?: boolean;
     search?: string;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
   }) {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.max(1, Math.min(100, Number(query.limit) || 20));
@@ -48,8 +67,15 @@ export class InventoryService {
       if (query.expiryDays === "expired") {
         where.expiryDate = { lt: now };
       } else {
-        const days = Number(query.expiryDays);
-        if (!isNaN(days)) {
+        let days = 0;
+        if (query.expiryDays === "1m") days = 30;
+        else if (query.expiryDays === "2m") days = 60;
+        else if (query.expiryDays === "3m") days = 90;
+        else if (query.expiryDays === "6m") days = 180;
+        else if (query.expiryDays === "1y") days = 365;
+        else days = Number(query.expiryDays);
+
+        if (!isNaN(days) && days > 0) {
           const targetDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
           where.expiryDate = { lte: targetDate, gte: now };
         }
@@ -66,12 +92,23 @@ export class InventoryService {
       }
     }
 
-    const [batches, total, stats] = await Promise.all([
+    const sortBy = query.sortBy || "expiryDate";
+    const sortOrder = query.sortOrder === "desc" ? "desc" : "asc";
+    const orderBy: any = {};
+    if (sortBy === "quantity") {
+      orderBy.quantity = sortOrder;
+    } else if (sortBy === "createdAt") {
+      orderBy.createdAt = sortOrder;
+    } else {
+      orderBy.expiryDate = sortOrder; // Strict FEFO ordering by default
+    }
+
+    const [batches, total] = await Promise.all([
       prisma.inventoryBatch.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { expiryDate: "asc" }, // Strict FEFO ordering
+        orderBy,
         include: {
           variant: {
             include: {
@@ -81,25 +118,42 @@ export class InventoryService {
         },
       }),
       prisma.inventoryBatch.count({ where }),
-      prisma.inventoryBatch.aggregate({
-        _count: { id: true },
-        _sum: { quantity: true },
-      }),
     ]);
 
-    // IST 30/60/90 days boundary calculations
-    const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    const in60Days = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
-    const in90Days = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+    // Fast in-memory cached summary metrics to eliminate remote DB latency
+    let summary: InventorySummaryMetrics;
+    const nowTime = Date.now();
+    if (cachedInventorySummary && cachedInventorySummary.expiresAt > nowTime) {
+      summary = cachedInventorySummary.data;
+    } else {
+      const in30Days = new Date(nowTime + 30 * 24 * 60 * 60 * 1000);
+      const in60Days = new Date(nowTime + 60 * 24 * 60 * 60 * 1000);
+      const in90Days = new Date(nowTime + 90 * 24 * 60 * 60 * 1000);
 
-    const [expiring30Count, expiring60Count, expiring90Count, expiredCount, lowStockCount] =
-      await Promise.all([
-        prisma.inventoryBatch.count({ where: { expiryDate: { lte: in30Days, gte: now } } }),
-        prisma.inventoryBatch.count({ where: { expiryDate: { lte: in60Days, gte: now } } }),
-        prisma.inventoryBatch.count({ where: { expiryDate: { lte: in90Days, gte: now } } }),
-        prisma.inventoryBatch.count({ where: { expiryDate: { lt: now } } }),
-        prisma.inventoryBatch.count({ where: { quantity: { gt: 0, lte: 10 } } }),
-      ]);
+      const [stats, expiring30Count, expiring60Count, expiring90Count, expiredCount, lowStockCount] =
+        await Promise.all([
+          prisma.inventoryBatch.aggregate({
+            _count: { id: true },
+            _sum: { quantity: true },
+          }),
+          prisma.inventoryBatch.count({ where: { expiryDate: { lte: in30Days, gte: now } } }),
+          prisma.inventoryBatch.count({ where: { expiryDate: { lte: in60Days, gte: now } } }),
+          prisma.inventoryBatch.count({ where: { expiryDate: { lte: in90Days, gte: now } } }),
+          prisma.inventoryBatch.count({ where: { expiryDate: { lt: now } } }),
+          prisma.inventoryBatch.count({ where: { quantity: { gt: 0, lte: 10 } } }),
+        ]);
+
+      summary = {
+        totalBatches: stats._count.id || 0,
+        totalUnits: stats._sum.quantity || 0,
+        expiring30Count,
+        expiring60Count,
+        expiring90Count,
+        expiredCount,
+        lowStockCount,
+      };
+      cachedInventorySummary = { data: summary, expiresAt: nowTime + SUMMARY_CACHE_TTL };
+    }
 
     return {
       data: batches,
@@ -109,15 +163,7 @@ export class InventoryService {
         total,
         totalPages: Math.ceil(total / limit),
       },
-      summary: {
-        totalBatches: stats._count.id || 0,
-        totalUnits: stats._sum.quantity || 0,
-        expiring30Count,
-        expiring60Count,
-        expiring90Count,
-        expiredCount,
-        lowStockCount,
-      },
+      summary,
     };
   }
 
@@ -193,6 +239,7 @@ export class InventoryService {
       });
     }
 
+    invalidateInventoryCache();
     return result.batch;
   }
 
@@ -256,6 +303,7 @@ export class InventoryService {
       });
     }
 
+    invalidateInventoryCache();
     return updated;
   }
 
@@ -301,6 +349,7 @@ export class InventoryService {
       });
     }
 
+    invalidateInventoryCache();
     return { success: true, message: `Batch #${batch.batchNumber} successfully removed` };
   }
 
@@ -521,6 +570,7 @@ export class InventoryService {
       });
     }
 
+    invalidateInventoryCache();
     return result;
   }
 

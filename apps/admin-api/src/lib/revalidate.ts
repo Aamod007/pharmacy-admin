@@ -51,6 +51,7 @@ export async function syncMutationToMainSite(options: SyncMutationOptions) {
           "x-revalidate-secret": env.REVALIDATE_SECRET,
         },
         body: JSON.stringify({ tags, paths }),
+        signal: AbortSignal.timeout(1000),
       });
 
       if (response.ok) {
@@ -115,6 +116,7 @@ export async function retryFailedRevalidations(): Promise<{ retried: number; suc
             "x-revalidate-secret": env.REVALIDATE_SECRET,
           },
           body: JSON.stringify({ tags, paths }),
+          signal: AbortSignal.timeout(1000),
         });
 
         if (response.ok) {

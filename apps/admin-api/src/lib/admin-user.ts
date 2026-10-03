@@ -1,21 +1,27 @@
 import prisma from "@pharmacy-admin/db";
 
-let cachedAdminId: string | null = null;
+// In-memory cache with 10-minute TTL to eliminate remote DB latency on every API request
+const idCache = new Map<string, { id: string; expiresAt: number }>();
+let globalFallbackAdminId: string | null = null;
+const CACHE_TTL_MS = 10 * 60 * 1000;
 
 /**
  * Resolves a given admin identifier or email to a valid AdminUser primary key (UUID)
- * present in the admin_users table.
- *
- * If candidateId is already a valid AdminUser id, returns it.
- * If candidateId is missing, invalid, or "admin-master", looks up by email.
- * If not found, falls back to the first active AdminUser in the database.
- * Returns null if no AdminUser exists in the database.
+ * present in the admin_users table with in-memory caching to eliminate per-request DB latency.
  */
 export async function resolveAdminUserId(
   candidateId?: string | null,
   email?: string | null,
   client?: any
 ): Promise<string | null> {
+  const cacheKey = `${candidateId || ""}|${email || ""}`;
+  const now = Date.now();
+
+  const cached = idCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.id;
+  }
+
   const db = client || prisma;
 
   // 1. If candidate ID is a non-placeholder string, verify it exists in DB
@@ -26,6 +32,8 @@ export async function resolveAdminUserId(
         select: { id: true },
       });
       if (existing) {
+        idCache.set(cacheKey, { id: existing.id, expiresAt: now + CACHE_TTL_MS });
+        idCache.set(`id:${existing.id}`, { id: existing.id, expiresAt: now + CACHE_TTL_MS });
         return existing.id;
       }
     } catch {
@@ -41,7 +49,9 @@ export async function resolveAdminUserId(
       select: { id: true },
     });
     if (byEmail) {
-      cachedAdminId = byEmail.id;
+      idCache.set(cacheKey, { id: byEmail.id, expiresAt: now + CACHE_TTL_MS });
+      idCache.set(`email:${targetEmail}`, { id: byEmail.id, expiresAt: now + CACHE_TTL_MS });
+      globalFallbackAdminId = byEmail.id;
       return byEmail.id;
     }
   } catch {
@@ -49,8 +59,8 @@ export async function resolveAdminUserId(
   }
 
   // 3. Fallback to cached ID if previously resolved
-  if (cachedAdminId) {
-    return cachedAdminId;
+  if (globalFallbackAdminId) {
+    return globalFallbackAdminId;
   }
 
   // 4. Fallback to any active admin user
@@ -61,7 +71,8 @@ export async function resolveAdminUserId(
       orderBy: { createdAt: "asc" },
     });
     if (activeAdmin) {
-      cachedAdminId = activeAdmin.id;
+      globalFallbackAdminId = activeAdmin.id;
+      idCache.set(cacheKey, { id: activeAdmin.id, expiresAt: now + CACHE_TTL_MS });
       return activeAdmin.id;
     }
   } catch {
@@ -70,3 +81,4 @@ export async function resolveAdminUserId(
 
   return null;
 }
+

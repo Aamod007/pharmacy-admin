@@ -27,9 +27,6 @@ import couponsRoutes from "./modules/coupons/coupons.routes";
 import bannersRoutes from "./modules/banners/banners.routes";
 import paymentsRoutes from "./modules/payments/payments.routes";
 import invoicesRoutes from "./modules/invoices/invoices.routes";
-import settingsRoutes from "./modules/settings/settings.routes";
-import staffRoutes from "./modules/staff/staff.routes";
-import auditRoutes from "./modules/audit/audit.routes";
 import labTestsRoutes from "./modules/labTests/labTests.routes";
 import reviewsRoutes from "./modules/reviews/reviews.routes";
 
@@ -131,9 +128,6 @@ app.use("/api/v1/coupons", couponsRoutes);
 app.use("/api/v1/banners", bannersRoutes);
 app.use("/api/v1/payments", paymentsRoutes);
 app.use("/api/v1/invoices", invoicesRoutes);
-app.use("/api/v1/settings", settingsRoutes);
-app.use("/api/v1/staff", staffRoutes);
-app.use("/api/v1/audit", auditRoutes);
 app.use("/api/v1/lab-tests", labTestsRoutes);
 app.use("/api/v1/reviews", reviewsRoutes);
 

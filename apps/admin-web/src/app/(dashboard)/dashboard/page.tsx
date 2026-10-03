@@ -97,9 +97,9 @@ export default function DashboardPage() {
 
           <div className="bg-white p-6 rounded-2xl border border-[#E4E7E9] shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-[#5B6B65] uppercase">Expiring Batches (30d)</p>
+              <p className="text-xs font-bold text-[#5B6B65] uppercase">Expiring Batches (&le; 1 Mo)</p>
               <h3 className="text-2xl font-extrabold text-[#F59E0B] mt-1">{stats?.expiringBatchesCount || 0}</h3>
-              <p className="text-xs text-[#5B6B65] font-semibold mt-1">Requires distributor return</p>
+              <p className="text-xs text-[#5B6B65] font-semibold mt-1">Prioritize FEFO dispatch / return</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-[#FEF3C7] flex items-center justify-center text-[#D97706]">
               <Clock className="w-6 h-6" />

@@ -702,16 +702,6 @@ model Faq {
   @@index([isActive])
 }
 
-model Setting {
-  id          String   @id @default(uuid())
-  key         String   @unique
-  value       String
-  description String?
-  updatedAt   DateTime @updatedAt
-
-  @@index([key])
-}
-
 // ============================================================================
 // ADMIN-OWNED MODELS (PREFIXED admin_ IN DATABASE)
 // ============================================================================
@@ -736,7 +726,6 @@ model AdminUser {
   deletedAt           DateTime?
 
   sessions            AdminSession[]
-  auditLogs           AdminAuditLog[]
   stockMovements      AdminStockMovement[]
   purchaseEntries     AdminPurchaseEntry[]
   assignedTickets     AdminSupportTicket[]
@@ -767,26 +756,6 @@ model AdminSession {
   @@map("admin_sessions")
 }
 
-model AdminAuditLog {
-  id          String    @id @default(uuid())
-  adminUserId String?
-  action      String    // CREATE, UPDATE, DELETE, STATUS_CHANGE, LOGIN, EXPORT
-  entity      String    // Product, Order, Category, InventoryBatch, User, Setting
-  entityId    String?
-  beforeState Json?
-  afterState  Json?
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime  @default(now())
-
-  adminUser   AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
-
-  @@index([adminUserId])
-  @@index([entity])
-  @@index([action])
-  @@index([createdAt])
-  @@map("admin_audit_logs")
-}
 
 model AdminStockMovement {
   id              String                 @id @default(uuid())

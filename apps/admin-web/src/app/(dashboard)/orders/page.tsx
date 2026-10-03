@@ -36,7 +36,8 @@ export default function OrdersPage() {
         body: JSON.stringify({ status: newStatus, note: `Status changed to ${newStatus} by admin` }),
       });
       toast.success("Order status updated to " + newStatus);
-      const res = await apiRequest(`/orders`);
+      const query = statusFilter !== "ALL" ? `?status=${statusFilter}` : "";
+      const res = await apiRequest(`/orders${query}`);
       setOrders(res.data || []);
       setSelectedOrder(null);
     } catch (err: any) {

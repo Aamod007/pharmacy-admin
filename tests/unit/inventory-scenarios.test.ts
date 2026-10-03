@@ -892,5 +892,35 @@ describe("Phase 2: Inventory Core & Statutory Invariants (S1 - S12, I1 - I6)", (
       await prisma.payment.deleteMany({ where: { orderId: { in: ids } } });
       await prisma.order.deleteMany({ where: { id: { in: ids } } });
     }
+
+    // Teardown test product and all associated test inventory batches and movements
+    if (testProduct?.id) {
+      const variants = await prisma.productVariant.findMany({
+        where: { productId: testProduct.id },
+        select: { id: true },
+      });
+      const vIds = variants.map((v) => v.id);
+      const batches = await prisma.inventoryBatch.findMany({
+        where: { variantId: { in: vIds } },
+        select: { id: true },
+      });
+      const bIds = batches.map((b) => b.id);
+
+      await prisma.adminStockMovement.deleteMany({
+        where: { OR: [{ batchId: { in: bIds } }, { variantId: { in: vIds } }] },
+      });
+      await prisma.adminPurchaseItem.deleteMany({
+        where: { variantId: { in: vIds } },
+      });
+      await prisma.inventoryBatch.deleteMany({
+        where: { id: { in: bIds } },
+      });
+      await prisma.productVariant.deleteMany({
+        where: { id: { in: vIds } },
+      });
+      await prisma.product.deleteMany({
+        where: { id: testProduct.id },
+      });
+    }
   });
 });

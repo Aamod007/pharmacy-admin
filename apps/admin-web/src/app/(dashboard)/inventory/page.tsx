@@ -3,7 +3,13 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Topbar } from "../../../components/shell/Topbar";
 import { apiRequest } from "../../../lib/api-client";
-import { formatDateIST, formatCurrency } from "../../../lib/utils";
+import {
+  formatDateIST,
+  formatCurrency,
+  formatExpiryMonthYear,
+  formatExpirySlash,
+  getExpiryMonthYearStatus,
+} from "../../../lib/utils";
 import {
   AlertCircle,
   Plus,
@@ -30,11 +36,12 @@ import { toast } from "sonner";
 export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState<"batches" | "ledger">("batches");
 
-  // Filter States
+  // Filter & Sorting States
   const [search, setSearch] = useState("");
   const [expiryDays, setExpiryDays] = useState("all");
   const [stockStatus, setStockStatus] = useState("all");
   const [isBlockedFilter, setIsBlockedFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
 
@@ -70,6 +77,8 @@ export default function InventoryPage() {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", String(limit));
+      params.set("sortBy", "expiryDate");
+      params.set("sortOrder", sortOrder);
 
       if (search.trim()) params.set("search", search.trim());
       if (expiryDays !== "all") params.set("expiryDays", expiryDays);
@@ -103,17 +112,22 @@ export default function InventoryPage() {
     }
   };
 
-  // Preload and reload on filter/page changes (independent of tab switching for 0ms latency)
+  // Preload and reload on filter/page/sort changes (independent of tab switching for 0ms latency)
   useEffect(() => {
     loadBatches(batches.length > 0);
-  }, [page, limit, expiryDays, stockStatus, isBlockedFilter]);
+  }, [page, limit, expiryDays, stockStatus, isBlockedFilter, sortOrder]);
 
   useEffect(() => {
     loadLedger(ledgerMovements.length > 0);
   }, [ledgerPage]);
 
-  // Debounced search trigger (resets page to 1)
+  // Debounced search trigger (resets page to 1, skips duplicate initial mount call)
+  const isFirstMount = React.useRef(true);
   useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
     const timer = setTimeout(() => {
       setPage(1);
       loadBatches();
@@ -127,6 +141,7 @@ export default function InventoryPage() {
     setExpiryDays("all");
     setStockStatus("all");
     setIsBlockedFilter("all");
+    setSortOrder("asc");
     setPage(1);
   };
 
@@ -194,40 +209,7 @@ export default function InventoryPage() {
     }
   };
 
-  // Days until expiry helper
-  const getExpiryStatus = (expiryDateStr: string) => {
-    const expDate = new Date(expiryDateStr);
-    const now = new Date();
-    const diffMs = expDate.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 0) {
-      return {
-        label: `Expired ${Math.abs(diffDays)}d ago`,
-        color: "bg-[#FEE2E2] text-[#DC2626] border-[#FCA5A5]",
-        isExpired: true,
-      };
-    }
-    if (diffDays <= 30) {
-      return {
-        label: `Expiring in ${diffDays}d`,
-        color: "bg-[#FEF3C7] text-[#D97706] border-[#FCD34D]",
-        isExpiringSoon: true,
-      };
-    }
-    if (diffDays <= 90) {
-      return {
-        label: `Expiring in ${diffDays}d`,
-        color: "bg-[#FEF9C3] text-[#CA8A04] border-[#FDE047]",
-        isExpiringSoon: false,
-      };
-    }
-    return {
-      label: `${diffDays}d remaining`,
-      color: "bg-[#DCFCE7] text-[#16A34A] border-[#86EFAC]",
-      isExpiringSoon: false,
-    };
-  };
 
   const hasActiveFilters =
     search.trim() !== "" ||
@@ -295,21 +277,21 @@ export default function InventoryPage() {
 
             <div
               onClick={() => {
-                setExpiryDays("30");
+                setExpiryDays("1m");
                 setStockStatus("all");
               }}
               className={`p-4 rounded-2xl border shadow-xs cursor-pointer transition ${
-                expiryDays === "30"
+                expiryDays === "1m"
                   ? "bg-[#FEF3C7] border-[#D97706]"
                   : "bg-white border-[#E4E7E9] hover:border-[#D97706]"
               }`}
             >
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-bold text-[#D97706] uppercase">Expiring &le; 30 Days</p>
+                <p className="text-[11px] font-bold text-[#D97706] uppercase">Expiring &le; 1 Month</p>
                 <Clock className="w-4 h-4 text-[#D97706]" />
               </div>
               <h3 className="text-2xl font-black text-[#D97706] mt-1">{summary.expiring30Count}</h3>
-              <p className="text-[11px] text-[#92400E] mt-0.5">Prioritize dispensing</p>
+              <p className="text-[11px] text-[#92400E] mt-0.5">Prioritize FEFO dispensing</p>
             </div>
 
             <div
@@ -377,7 +359,7 @@ export default function InventoryPage() {
                   )}
                 </div>
 
-                {/* Expiry Dropdown/Filter */}
+                {/* Expiry Dropdown/Filter in Months/Years */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-[#5B6B65] whitespace-nowrap">Expiry:</span>
                   <select
@@ -389,10 +371,11 @@ export default function InventoryPage() {
                     className="px-3 py-2 bg-[#F1F3F4] rounded-xl text-xs font-bold text-[#0F2A22] border border-transparent focus:border-[#0B4A3A] focus:outline-none"
                   >
                     <option value="all">All Expiries</option>
-                    <option value="30">Expiring &le; 30 Days</option>
-                    <option value="60">Expiring &le; 60 Days</option>
-                    <option value="90">Expiring &le; 90 Days</option>
-                    <option value="180">Expiring &le; 180 Days (6 Mos)</option>
+                    <option value="1m">Expiring &le; 1 Month</option>
+                    <option value="2m">Expiring &le; 2 Months</option>
+                    <option value="3m">Expiring &le; 3 Months</option>
+                    <option value="6m">Expiring &le; 6 Months</option>
+                    <option value="1y">Expiring &le; 1 Year</option>
                     <option value="expired">Already Expired</option>
                   </select>
                 </div>
@@ -443,14 +426,15 @@ export default function InventoryPage() {
                 )}
               </div>
 
-              {/* Quick Pills for Active Filter Tags */}
+              {/* Quick Pills for Active Filter Tags in Months/Years */}
               <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#E4E7E9] text-xs">
                 <span className="text-[11px] font-bold text-[#5B6B65]">Quick Filters:</span>
                 {[
                   { label: "All Batches", key: "all" },
-                  { label: "Expiring in 30d", key: "30" },
-                  { label: "Expiring in 60d", key: "60" },
-                  { label: "Expiring in 90d", key: "90" },
+                  { label: "≤ 1 Month", key: "1m" },
+                  { label: "≤ 3 Months", key: "3m" },
+                  { label: "≤ 6 Months", key: "6m" },
+                  { label: "≤ 1 Year", key: "1y" },
                   { label: "Expired", key: "expired" },
                 ].map((pill) => (
                   <button
@@ -479,7 +463,20 @@ export default function InventoryPage() {
                     <tr>
                       <th className="py-3 px-6">Medicine &amp; Brand</th>
                       <th className="py-3 px-4">Batch Number</th>
-                      <th className="py-3 px-4">Expiry Date (FEFO)</th>
+                      <th
+                        className="py-3 px-4 cursor-pointer select-none group hover:text-[#0B4A3A] transition"
+                        onClick={() => {
+                          setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+                        }}
+                        title="Click to toggle FEFO Earliest / Latest expiry sort"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>Expiry (Month / Year)</span>
+                          <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded bg-white border border-[#E4E7E9] text-[#0B4A3A] font-bold">
+                            {sortOrder === "asc" ? "▲ Earliest (FEFO)" : "▼ Latest First"}
+                          </span>
+                        </div>
+                      </th>
                       <th className="py-3 px-4">Sellable Stock</th>
                       <th className="py-3 px-4">Unit Cost (₹)</th>
                       <th className="py-3 px-4">Status</th>
@@ -511,7 +508,7 @@ export default function InventoryPage() {
                       </tr>
                     ) : (
                       batches.map((b) => {
-                        const expStatus = getExpiryStatus(b.expiryDate);
+                        const expStatus = getExpiryMonthYearStatus(b.expiryDate);
                         const isLowStock = b.quantity > 0 && b.quantity <= 10;
                         const isOutOfStock = b.quantity <= 0;
 
@@ -547,16 +544,17 @@ export default function InventoryPage() {
                               </span>
                             </td>
 
-                            {/* Expiry Date (FEFO) */}
+                            {/* Expiry Date (FEFO) in Month & Year */}
                             <td className="py-3.5 px-4">
                               <div className="space-y-1">
-                                <span className="font-mono text-xs font-bold text-[#0F2A22]">
-                                  {new Date(b.expiryDate).toLocaleDateString("en-IN", {
-                                    month: "short",
-                                    year: "numeric",
-                                    day: "numeric",
-                                  })}
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold text-xs text-[#0F2A22]">
+                                    {formatExpiryMonthYear(b.expiryDate)}
+                                  </span>
+                                  <span className="font-mono text-[10px] text-[#5B6B65] bg-[#F1F3F4] px-1.5 py-0.5 rounded">
+                                    {formatExpirySlash(b.expiryDate)}
+                                  </span>
+                                </div>
                                 <div>
                                   <span
                                     className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${expStatus.color}`}
@@ -810,7 +808,9 @@ export default function InventoryPage() {
                 <p className="text-[#5B6B65]">
                   Current on-hand: <strong className="text-[#0F2A22]">{adjustBatch.quantity} units</strong> &bull;
                   Expiry:{" "}
-                  <strong>{new Date(adjustBatch.expiryDate).toLocaleDateString()}</strong>
+                  <strong className="text-[#0F2A22]">
+                    {formatExpiryMonthYear(adjustBatch.expiryDate)} ({formatExpirySlash(adjustBatch.expiryDate)})
+                  </strong>
                 </p>
               </div>
 

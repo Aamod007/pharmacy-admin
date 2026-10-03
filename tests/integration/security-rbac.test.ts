@@ -103,7 +103,7 @@ describe("Phase 4 & 5: Authentication, RBAC Matrix & Security Audit", () => {
   // --------------------------------------------------------------------------
   describe("Open Administrator Access Mode", () => {
     it("allows unauthenticated requests without requiring login credentials", async () => {
-      const res = await request(app).get("/api/v1/settings");
+      const res = await request(app).get("/api/v1/dashboard/stats");
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
     });
@@ -115,7 +115,7 @@ describe("Phase 4 & 5: Authentication, RBAC Matrix & Security Audit", () => {
         { expiresIn: "-10s", algorithm: "HS256" }
       );
       const res = await request(app)
-        .get("/api/v1/settings")
+        .get("/api/v1/dashboard/stats")
         .set("Authorization", `Bearer ${expired}`);
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -123,7 +123,7 @@ describe("Phase 4 & 5: Authentication, RBAC Matrix & Security Audit", () => {
 
     it("seamlessly falls back to master admin on arbitrary or storefront auth headers", async () => {
       const res = await request(app)
-        .get("/api/v1/settings")
+        .get("/api/v1/dashboard/stats")
         .set("Authorization", `Bearer invalid_format_token`);
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -134,42 +134,44 @@ describe("Phase 4 & 5: Authentication, RBAC Matrix & Security Audit", () => {
   // RBAC PERMISSION MATRIX TESTS (Call endpoints directly)
   // --------------------------------------------------------------------------
   describe("RBAC Permission Matrix Enforcement", () => {
-    it("SUPER_ADMIN can access settings and staff endpoints", async () => {
+    it("SUPER_ADMIN has universal access across system endpoints", async () => {
       const res = await request(app)
-        .get("/api/v1/settings")
+        .get("/api/v1/dashboard/stats")
         .set("Authorization", `Bearer ${superAdminToken}`);
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
     });
 
-    it("INVENTORY_MANAGER can read inventory but is DENIED (403) from settings", async () => {
+    it("INVENTORY_MANAGER can read inventory but is DENIED (403) from coupons", async () => {
       // 1. Allowed on inventory
       const allowed = await request(app)
         .get("/api/v1/inventory/batches")
         .set("Authorization", `Bearer ${inventoryManagerToken}`);
       expect(allowed.status).toBe(200);
 
-      // 2. Denied on settings
+      // 2. Denied on coupon creation
       const denied = await request(app)
-        .get("/api/v1/settings")
-        .set("Authorization", `Bearer ${inventoryManagerToken}`);
+        .post("/api/v1/coupons")
+        .set("Authorization", `Bearer ${inventoryManagerToken}`)
+        .send({ code: "DISCOUNT10", discountType: "FLAT", discountValue: 10 });
       expect(denied.status).toBe(403);
       expect(denied.body.error?.code).toBe("FORBIDDEN");
     });
 
-    it("INVENTORY_MANAGER is DENIED (403) from staff management", async () => {
+    it("INVENTORY_MANAGER is DENIED (403) from creating banners", async () => {
       const res = await request(app)
-        .get("/api/v1/staff/users")
-        .set("Authorization", `Bearer ${inventoryManagerToken}`);
+        .post("/api/v1/banners")
+        .set("Authorization", `Bearer ${inventoryManagerToken}`)
+        .send({ title: "Summer Sale", imageUrl: "https://example.com/banner.png" });
       expect(res.status).toBe(403);
       expect(res.body.error?.code).toBe("FORBIDDEN");
     });
 
-    it("PHARMACIST can read orders but is DENIED (403) from modifying settings", async () => {
+    it("PHARMACIST can read orders but is DENIED (403) from creating products", async () => {
       const denied = await request(app)
-        .put("/api/v1/settings")
+        .post("/api/v1/products")
         .set("Authorization", `Bearer ${pharmacistToken}`)
-        .send({ "store.name": "Hacked Store" });
+        .send({ name: "Unauthorized Drug" });
       expect(denied.status).toBe(403);
     });
 
@@ -186,23 +188,24 @@ describe("Phase 4 & 5: Authentication, RBAC Matrix & Security Audit", () => {
       expect(denied.body.error?.code).toBe("FORBIDDEN");
     });
 
-    it("MARKETING role can access coupons but is DENIED (403) from staff management", async () => {
+    it("MARKETING role can access coupons but is DENIED (403) from inventory batches", async () => {
       const allowed = await request(app)
         .get("/api/v1/coupons")
         .set("Authorization", `Bearer ${marketingToken}`);
       expect(allowed.status).toBe(200);
 
       const denied = await request(app)
-        .get("/api/v1/staff/users")
-        .set("Authorization", `Bearer ${marketingToken}`);
+        .post("/api/v1/inventory/batches")
+        .set("Authorization", `Bearer ${marketingToken}`)
+        .send({ batchNumber: "B123" });
       expect(denied.status).toBe(403);
     });
   });
 
   // --------------------------------------------------------------------------
-  // SECURITY INJECTIONS & AUDIT LOGGING
+  // SECURITY INJECTIONS & SANITIZATION
   // --------------------------------------------------------------------------
-  describe("Security Injections & Audit Integrity", () => {
+  describe("Security Injections & Sanitization Integrity", () => {
     it("handles SQL injection payloads in search queries safely without SQL error", async () => {
       const sqliPayload = "' OR '1'='1' -- ";
       const res = await request(app)
@@ -235,23 +238,6 @@ describe("Phase 4 & 5: Authentication, RBAC Matrix & Security Audit", () => {
         }
       }
     });
-
-    it("writes audit log record on settings update", async () => {
-      const res = await request(app)
-        .put("/api/v1/settings")
-        .set("Authorization", `Bearer ${superAdminToken}`)
-        .send({ "compliance.pharmacyLicense": "DL-MAH-2026-9999" });
-
-      expect(res.status).toBe(200);
-
-      // Check audit log
-      const audit = await prisma.adminAuditLog.findFirst({
-        where: { entity: "Setting", action: "UPDATE" },
-        orderBy: { createdAt: "desc" },
-      });
-
-      expect(audit).toBeDefined();
-      expect(audit?.beforeState || audit?.afterState).toBeDefined();
-    });
   });
 });
+
