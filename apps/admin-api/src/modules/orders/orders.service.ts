@@ -18,6 +18,24 @@ const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   CANCELLED: [],
 };
 
+interface CachedOrdersResult {
+  data: any[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  cachedAt: number;
+}
+
+const ordersCache = new Map<string, CachedOrdersResult>();
+const ORDERS_CACHE_TTL_MS = 15000; // 15s in-memory cache to eliminate remote DB latency
+
+export function invalidateOrdersCache() {
+  ordersCache.clear();
+}
+
 export class OrdersService {
   async listOrders(params: {
     page?: number;
@@ -32,6 +50,22 @@ export class OrdersService {
     const page = Math.max(1, Number(params.page) || 1);
     const limit = Math.max(1, Math.min(100, Number(params.limit) || 20));
     const skip = (page - 1) * limit;
+
+    const cacheKey = JSON.stringify({
+      page,
+      limit,
+      status: params.status || "ALL",
+      paymentStatus: params.paymentStatus || "ALL",
+      paymentMethod: params.paymentMethod || "ALL",
+      search: (params.search || "").trim().toLowerCase(),
+      startDate: params.startDate || "",
+      endDate: params.endDate || "",
+    });
+
+    const cached = ordersCache.get(cacheKey);
+    if (cached && Date.now() - cached.cachedAt < ORDERS_CACHE_TTL_MS) {
+      return { data: cached.data, meta: cached.meta };
+    }
 
     const where: any = {};
     if (params.status) where.status = params.status;
@@ -69,13 +103,25 @@ export class OrdersService {
         include: {
           user: { select: { id: true, name: true, email: true, phone: true } },
           address: true,
+          items: {
+            select: {
+              id: true,
+              productName: true,
+              packSize: true,
+              sku: true,
+              price: true,
+              mrp: true,
+              quantity: true,
+              subtotal: true,
+            },
+          },
           _count: { select: { items: true } },
         },
       }),
       prisma.order.count({ where }),
     ]);
 
-    return {
+    const result = {
       data: orders,
       meta: {
         page,
@@ -84,6 +130,9 @@ export class OrdersService {
         totalPages: Math.ceil(total / limit),
       },
     };
+
+    ordersCache.set(cacheKey, { ...result, cachedAt: Date.now() });
+    return result;
   }
 
   async getOrderById(id: string) {
@@ -246,6 +295,7 @@ export class OrdersService {
       });
     }
 
+    invalidateOrdersCache();
     return updated;
   }
 
@@ -254,10 +304,12 @@ export class OrdersService {
     if (!order) throw new Error("Order not found");
 
     const currentNotes = order.notes ? `${order.notes}\n---\n${note}` : note;
-    return prisma.order.update({
+    const updated = await prisma.order.update({
       where: { id: orderId },
       data: { notes: currentNotes },
     });
+    invalidateOrdersCache();
+    return updated;
   }
 }
 

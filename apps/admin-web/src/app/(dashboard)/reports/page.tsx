@@ -30,7 +30,7 @@ export default function ReportsPage() {
       ]);
       setStats(statsRes.data || {});
       setProducts(productsRes.data?.products || []);
-      setOrders(ordersRes.data?.orders || []);
+      setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : ordersRes.data?.orders || []);
     } catch (err) {
       console.error(err);
     }
